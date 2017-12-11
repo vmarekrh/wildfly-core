@@ -167,6 +167,7 @@ import org.jboss.as.cli.impl.aesh.cmd.ConnectCommand;
 import org.jboss.as.cli.impl.aesh.cmd.HelpCommand;
 import org.jboss.as.cli.impl.aesh.cmd.deployment.DeploymentCommand;
 import org.jboss.as.cli.impl.aesh.cmd.operation.OperationCommandContainer;
+import org.jboss.as.cli.impl.aesh.cmd.security.SecurityCommand;
 import org.jboss.as.cli.operation.CommandLineParser;
 import org.jboss.as.cli.operation.NodePathFormatter;
 import org.jboss.as.cli.operation.OperationCandidatesProvider;
@@ -514,6 +515,7 @@ public class CommandContextImpl implements CommandContext, ModelControllerClient
         cmdRegistry.addCommand(new HelpCommand(cmdRegistry));
         cmdRegistry.addCommand(new ConnectCommand());
         DeploymentCommand.registerDeploymentCommands(this, aeshCommands.getRegistry());
+        cmdRegistry.addCommand(new SecurityCommand());
 
         // aesh extensions, for now add grep to make | operator
         // usable.

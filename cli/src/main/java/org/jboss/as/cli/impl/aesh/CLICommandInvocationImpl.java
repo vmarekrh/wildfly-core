@@ -121,7 +121,7 @@ class CLICommandInvocationImpl implements CLICommandInvocation {
 
     @Override
     public String inputLine(Prompt prompt) throws InterruptedException {
-        return shell.readLine();
+        return shell.readLine(prompt);
     }
 
     @Override
