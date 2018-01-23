@@ -58,7 +58,6 @@ public class UndeployTestCase {
 
     @BeforeClass
     public static void before() throws Exception {
-
         testSupport = CLITestSuite.createSupport(UndeployTestCase.class.getSimpleName());
 
         String tempDir = System.getProperty("java.io.tmpdir");
@@ -90,6 +89,7 @@ public class UndeployTestCase {
 
     @Before
     public void beforeTest() throws Exception {
+        // TODO replace Legacy command by aesh command
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
 
@@ -103,7 +103,7 @@ public class UndeployTestCase {
     }
 
     @Test
-    public void undeploy() throws Exception {
+    public void testLegacyUndeployWithAllServerGroups() throws Exception {
         // From serverGroup1 only, still referenced from sg2. Must keep-content
         ctx.handle("undeploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
 
@@ -121,6 +121,11 @@ public class UndeployTestCase {
 
         checkState(sgOne, cliTestApp1War.getName(), false);
         checkState(sgTwo, cliTestApp1War.getName(), true);
+    }
+
+    @Test
+    public void testUndeployWithAllServerGroups() throws Exception {
+        // TODO make test
     }
 
     private void checkState(String groupName, String deploymentname, boolean expected) throws Exception {
