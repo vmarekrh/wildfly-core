@@ -171,10 +171,21 @@ public class UndeployWildcardDomainTestCase {
     @Test
     public void testUndeployAllWars() throws Exception {
         // TODO make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Undeploy all deployed war archive
+         */
     }
 
     @Test
     public void testUndeployCliTestApps() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'
+         */
         ctx.handle("deployment undeploy cli-test-app* --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAnotherWar.getName());
     }
@@ -182,21 +193,43 @@ public class UndeployWildcardDomainTestCase {
     @Test
     public void testUndeployTestAs() throws Exception {
         // TODO make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Undeploy all deployed application deployments with prefix '*test-a*'
+         */
     }
 
     @Test
     public void testUndeployTestAWARs() throws Exception {
         // TODO make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Undeploy all deployed application deployments with filtering by '*test-a*.war'
+         */
     }
 
     @Test
     public void testLegacyUndeployAllWars() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups using backward compatibility commands
+
+        Undeploy all deployed war archive
+         */
         ctx.handle("undeploy *.war --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAppEar.getName());
     }
 
     @Test
     public void testLegacyUndeployCliTestApps() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups using backward compatibility commands
+
+        Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'
+         */
         ctx.handle("undeploy cli-test-app* --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAnotherWar.getName());
     }
@@ -204,22 +237,46 @@ public class UndeployWildcardDomainTestCase {
 
     @Test
     public void testLegacyUndeployTestAps() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups using backward compatibility commands
+
+        Undeploy all deployed application deployments with prefix '*test-ap*'
+         */
         ctx.handle("undeploy *test-ap* --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAnotherWar.getName());
     }
 
     @Test
     public void testLegacyUndeployTestAs() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups using backward compatibility commands
+
+        Undeploy all deployed application deployments with prefix '*test-a*'
+         */
         ctx.handle("undeploy *test-a* --all-relevant-server-groups");
     }
 
     @Test
     public void testUndeployTestAps() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Undeploy all deployed application deployments with prefix 'test-a'
+         */
         ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
     }
 
     @Test
     public void testLegacyUndeployTestAWARs() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups using backward compatibility commands
+
+        Undeploy all deployed application deployments with filtering by '*test-a*.war'
+         */
         ctx.handle("undeploy *test-a*.war --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAppEar.getName());
     }
