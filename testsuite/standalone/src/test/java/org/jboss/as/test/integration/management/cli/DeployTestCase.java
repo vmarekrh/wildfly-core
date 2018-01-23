@@ -67,6 +67,7 @@ public class DeployTestCase {
 
     @BeforeClass
     public static void before() throws Exception {
+        // TODO replace Legacy command by aesh command
         CommandContextConfiguration.Builder configBuilder = new CommandContextConfiguration.Builder();
         configBuilder.setInitConsole(true).setConsoleInput(System.in).setConsoleOutput(System.out).
                 setController("remote+http://" + TestSuiteEnvironment.getServerAddress()
@@ -102,6 +103,7 @@ public class DeployTestCase {
 
     @AfterClass
     public static void after() throws Exception {
+        // TODO replace Legacy command by aesh command
         ctx.handle("undeploy *");
         ctx.terminateSession();
         cliTestApp1War.delete();
@@ -126,7 +128,7 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testDeployAll() throws Exception {
+    public void testDeploymentLiveCycle() throws Exception {
         checkDeployment(cliTestApp1War.getName(), false);
         checkDeployment(cliTestAnotherWar.getName(), false);
         checkDeployment(cliTestApp2War.getName(), false);
@@ -173,7 +175,7 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testRedeploy() throws Exception {
+    public void testLegacyRedeployFileDeployment() throws Exception {
         redeploy("deploy --force", false);
         redeploy("deploy --force", true);
     }
@@ -206,13 +208,13 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testRedeploy2() throws Exception {
+    public void testRedeployFileDeployment() throws Exception {
         redeploy("deployment deploy-file --replace", false);
         redeploy("deployment deploy-file --replace", true);
     }
 
     @Test
-    public void testArchive() throws Exception {
+    public void testLegacyDeployUndeployViaCliArchive() throws Exception {
         File cliFile = createCliArchive();
         try {
             ctx.handle("deploy " + cliFile.getAbsolutePath());
@@ -222,7 +224,7 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testArchive2() throws Exception {
+    public void testDeployUndeployViaCliArchive() throws Exception {
         File cliFile = createCliArchive();
         try {
             ctx.handle("deployment deploy-cli-archive " + cliFile.getAbsolutePath());
@@ -232,7 +234,7 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testArchiveWithTimeout() throws Exception {
+    public void testLegacyDeployUndeployViaCliArchiveWithTimeout() throws Exception {
         File cliFile = createCliArchive();
         try {
             ctx.handle("command-timeout set 2000");
@@ -243,7 +245,7 @@ public class DeployTestCase {
     }
 
     @Test
-    public void testArchiveWithTimeout2() throws Exception {
+    public void testDeployUndeployViaCliArchiveWithTimeout() throws Exception {
         File cliFile = createCliArchive();
         try {
             ctx.handle("command-timeout set 2000");
@@ -251,6 +253,51 @@ public class DeployTestCase {
         } finally {
             cliFile.delete();
         }
+    }
+
+    @Test
+    public void testLegacyDisableEnableDeployments() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDeployViaUrl() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDeploymentInformation() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDeployFileWithWrongPath() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDeployWithWrongUrl() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDeployWithWrongCli() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDisableWrongDeployment() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testDisableAlreadyDisabledDeployment() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testEnableWrongDeployments() throws Exception {
+        // TODO make test
     }
 
     private void checkDeployment(String name, boolean enabled) throws CommandFormatException, IOException {

@@ -122,6 +122,7 @@ public class UndeployWildcardDomainTestCase {
 
     @Before
     public void beforeTest() throws Exception {
+        // TODO replace Legacy command by aesh command
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
 
@@ -136,7 +137,7 @@ public class UndeployWildcardDomainTestCase {
 
     @After
     public void afterTest() throws Exception {
-
+        // TODO replace Legacy command by aesh command
         StringBuilder buf = undeploy(null, cliTestApp1War.getName(), sgOne);
         buf = undeploy(buf, cliTestAnotherWar.getName(), sgOne);
         buf = undeploy(buf, cliTestApp2War.getName(), sgTwo);
@@ -169,41 +170,56 @@ public class UndeployWildcardDomainTestCase {
 
     @Test
     public void testUndeployAllWars() throws Exception {
-        ctx.handle("undeploy *.war --all-relevant-server-groups");
-        afterTestDeployments.add(cliTestAppEar.getName());
+        // TODO make test
     }
 
     @Test
     public void testUndeployCliTestApps() throws Exception {
-        ctx.handle("undeploy cli-test-app* --all-relevant-server-groups");
-        afterTestDeployments.add(cliTestAnotherWar.getName());
-    }
-
-    @Test
-    public void testUndeployCliTestApps2() throws Exception {
         ctx.handle("deployment undeploy cli-test-app* --all-relevant-server-groups");
-        afterTestDeployments.add(cliTestAnotherWar.getName());
-    }
-
-
-    @Test
-    public void testUndeployTestAps() throws Exception {
-        ctx.handle("undeploy *test-ap* --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAnotherWar.getName());
     }
 
     @Test
     public void testUndeployTestAs() throws Exception {
-        ctx.handle("undeploy *test-a* --all-relevant-server-groups");
-    }
-
-    @Test
-    public void testUndeployTestAs2() throws Exception {
-        ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
+        // TODO make test
     }
 
     @Test
     public void testUndeployTestAWARs() throws Exception {
+        // TODO make test
+    }
+
+    @Test
+    public void testLegacyUndeployAllWars() throws Exception {
+        ctx.handle("undeploy *.war --all-relevant-server-groups");
+        afterTestDeployments.add(cliTestAppEar.getName());
+    }
+
+    @Test
+    public void testLegacyUndeployCliTestApps() throws Exception {
+        ctx.handle("undeploy cli-test-app* --all-relevant-server-groups");
+        afterTestDeployments.add(cliTestAnotherWar.getName());
+    }
+
+
+    @Test
+    public void testLegacyUndeployTestAps() throws Exception {
+        ctx.handle("undeploy *test-ap* --all-relevant-server-groups");
+        afterTestDeployments.add(cliTestAnotherWar.getName());
+    }
+
+    @Test
+    public void testLegacyUndeployTestAs() throws Exception {
+        ctx.handle("undeploy *test-a* --all-relevant-server-groups");
+    }
+
+    @Test
+    public void testUndeployTestAps() throws Exception {
+        ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
+    }
+
+    @Test
+    public void testLegacyUndeployTestAWARs() throws Exception {
         ctx.handle("undeploy *test-a*.war --all-relevant-server-groups");
         afterTestDeployments.add(cliTestAppEar.getName());
     }

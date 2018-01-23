@@ -65,7 +65,7 @@ public class DeployAllDomainTestCase {
 
     @BeforeClass
     public static void before() throws Exception {
-
+        // TODO replace Legacy command by aesh command
         testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
 
         String tempDir = System.getProperty("java.io.tmpdir");
@@ -121,6 +121,7 @@ public class DeployAllDomainTestCase {
 
     @Before
     public void beforeTest() throws Exception {
+        // TODO replace Legacy command by aesh command
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
 
@@ -139,7 +140,7 @@ public class DeployAllDomainTestCase {
     }
 
     @Test
-    public void testDeployAll() throws Exception {
+    public void testDeploymentLiveCycleWithServerGroups() throws Exception {
         checkDeployment(sgOne, cliTestApp1War.getName(), false);
         checkDeployment(sgOne, cliTestAnotherWar.getName(), false);
         checkDeployment(sgOne, cliTestAppEar.getName(), false);
