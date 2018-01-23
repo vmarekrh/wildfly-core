@@ -129,6 +129,38 @@ public class DeployTestCase {
 
     @Test
     public void testDeploymentLiveCycle() throws Exception {
+        // TODO re-make test
+        /*
+        For check are used commands 'deployment list' and 'deployment info'
+
+        Deploy 3 applications deployments
+
+        Check if deployment is installed
+
+        Disable one applications deployments
+
+        Check if applications deployments is disabled
+
+        Disable all applications deployments
+
+        Check if applications deployments is disabled
+
+        Enable one application deployment
+
+        Check if selected application deployment is enabled
+
+        Enable all applications deployments
+
+        Check if all applications deployments is enabled
+
+        Undeploy one application deployment
+
+        Check if selected application deployment is removed
+
+        Undeploy all remaining application deployment
+
+        Check if all applications deployments are gone
+         */
         checkDeployment(cliTestApp1War.getName(), false);
         checkDeployment(cliTestAnotherWar.getName(), false);
         checkDeployment(cliTestApp2War.getName(), false);
@@ -176,6 +208,18 @@ public class DeployTestCase {
 
     @Test
     public void testLegacyRedeployFileDeployment() throws Exception {
+        // TODO re-make test
+        /*
+        Prepare application deployment for redeploy
+
+        Check if prepared application deployments is installed
+
+        Try redeploy same application deployment
+
+        Check if application deployments is redeployed
+
+        Using backward compatibility commands
+         */
         redeploy("deploy --force", false);
         redeploy("deploy --force", true);
     }
@@ -209,12 +253,30 @@ public class DeployTestCase {
 
     @Test
     public void testRedeployFileDeployment() throws Exception {
+        // TODO re-make test
+        /*
+        For check are used commands 'deployment list'
+
+        Prepare application deployment for redeploy
+
+        Check if prepared application deployments is installed
+
+        Try redeploy same application deployment
+
+        Check if application deployments is redeployed
+         */
         redeploy("deployment deploy-file --replace", false);
         redeploy("deployment deploy-file --replace", true);
     }
 
     @Test
     public void testLegacyDeployUndeployViaCliArchive() throws Exception {
+        // TODO re-make test
+        /*
+        Deploy one application deployment via cli archive
+
+        Using backward compatibility commands
+         */
         File cliFile = createCliArchive();
         try {
             ctx.handle("deploy " + cliFile.getAbsolutePath());
@@ -225,6 +287,10 @@ public class DeployTestCase {
 
     @Test
     public void testDeployUndeployViaCliArchive() throws Exception {
+        // TODO re-make test
+        /*
+        Deploy one application deployment via cli archive
+         */
         File cliFile = createCliArchive();
         try {
             ctx.handle("deployment deploy-cli-archive " + cliFile.getAbsolutePath());
@@ -235,6 +301,14 @@ public class DeployTestCase {
 
     @Test
     public void testLegacyDeployUndeployViaCliArchiveWithTimeout() throws Exception {
+        // TODO re-make test
+        /*
+        Operation is limited by 2000 second only
+
+        Deploy one application deployment via cli archive
+
+        Using backward compatibility commands
+         */
         File cliFile = createCliArchive();
         try {
             ctx.handle("command-timeout set 2000");
@@ -246,6 +320,12 @@ public class DeployTestCase {
 
     @Test
     public void testDeployUndeployViaCliArchiveWithTimeout() throws Exception {
+        // TODO re-make test
+        /*
+        Operation is limited by 2000 second only
+
+        Deploy one application deployment via cli archive
+         */
         File cliFile = createCliArchive();
         try {
             ctx.handle("command-timeout set 2000");
@@ -258,46 +338,112 @@ public class DeployTestCase {
     @Test
     public void testLegacyDisableEnableDeployments() throws Exception {
         // TODO make test
+        /*
+        Deploy disabled 3 applications deployments
+
+        Check if applications deployments is installed and disabled
+
+        Enable all applications deployments
+
+        Check if applications deployments is enabled
+
+        Disable all applications deployments
+
+        Check if applications deployments is disabled
+
+        Using backward compatibility commands
+         */
     }
 
     @Test
     public void testDeployViaUrl() throws Exception {
         // TODO make test
+        /*
+        For check are used commands 'deployment list'
+
+        Deploy application deployment via url link
+
+        Check if application deployments is installed
+         */
     }
 
     @Test
     public void testDeploymentInformation() throws Exception {
         // TODO make test
+        /*
+        For check are used commands 'deployment list' and 'deployment info'
+
+        Deploy 3 applications deployments
+
+        Disable one deployed deployment
+
+        Parse and check deployment info command output
+         */
     }
 
     @Test
     public void testDeployFileWithWrongPath() throws Exception {
         // TODO make test
+        /*
+        Try deploy application deployments with wrong path
+
+        Check error message
+         */
     }
 
     @Test
     public void testDeployWithWrongUrl() throws Exception {
         // TODO make test
+        /*
+        Try deploy application deployments with wrong url
+
+        Check error message
+         */
     }
 
     @Test
     public void testDeployWithWrongCli() throws Exception {
         // TODO make test
+        /*
+        Try deploy application deployments with wrong path
+
+        Check error message
+         */
     }
 
     @Test
     public void testDisableWrongDeployment() throws Exception {
         // TODO make test
+        /*
+        Try disable non installed application deployment
+
+        Check error message
+         */
+
     }
 
     @Test
     public void testDisableAlreadyDisabledDeployment() throws Exception {
         // TODO make test
+        /*
+        Deploy disabled application deployment
+
+        Check if application deployment is installed and disabled
+
+        Try disable already disabled application deployment
+
+        Check error message
+         */
     }
 
     @Test
     public void testEnableWrongDeployments() throws Exception {
         // TODO make test
+        /*
+        Try enable non installed application deployment
+
+        Check error message
+         */
     }
 
     private void checkDeployment(String name, boolean enabled) throws CommandFormatException, IOException {
@@ -306,7 +452,7 @@ public class DeployTestCase {
         }
     }
 
-     private boolean readDeploymentStatus(String name) throws CommandFormatException, IOException {
+    private boolean readDeploymentStatus(String name) throws CommandFormatException, IOException {
         ModelNode mn = ctx.buildRequest("/deployment=" + name + ":read-attribute(name=enabled)");
         ModelNode response = ctx.getModelControllerClient().execute(mn);
         if (response.hasDefined(Util.OUTCOME) && response.get(Util.OUTCOME).asString().equals(Util.SUCCESS)) {

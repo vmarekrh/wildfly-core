@@ -141,6 +141,26 @@ public class DeployAllDomainTestCase {
 
     @Test
     public void testDeploymentLiveCycleWithServerGroups() throws Exception {
+        // TODO re-make test
+        /*
+        For check are used commands 'deployment list' and 'deployment info'
+
+        Deploy 3 applications deployments with set server groups
+
+        Check if deployment is installed and sets server groups
+
+        Disable 2 applications deployments with set server groups
+
+        Check if applications deployments is disabled
+
+        Enable one application deployment
+
+        Check if selected application deployment is enabled
+
+        Undeploy one application deployment
+
+        Check if selected application deployment is removed
+         */
         checkDeployment(sgOne, cliTestApp1War.getName(), false);
         checkDeployment(sgOne, cliTestAnotherWar.getName(), false);
         checkDeployment(sgOne, cliTestAppEar.getName(), false);

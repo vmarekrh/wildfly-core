@@ -104,6 +104,13 @@ public class UndeployTestCase {
 
     @Test
     public void testLegacyUndeployWithAllServerGroups() throws Exception {
+        // TODO re-make test
+        /*
+        Test undeploying with all relevant server groups
+
+        Using backward compatibility commands
+         */
+
         // From serverGroup1 only, still referenced from sg2. Must keep-content
         ctx.handle("undeploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
 
@@ -126,6 +133,9 @@ public class UndeployTestCase {
     @Test
     public void testUndeployWithAllServerGroups() throws Exception {
         // TODO make test
+        /*
+        Test undeploying with all relevant server groups
+         */
     }
 
     private void checkState(String groupName, String deploymentname, boolean expected) throws Exception {
