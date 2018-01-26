@@ -28,18 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import org.jboss.as.test.integration.domain.management.cli.BasicOpsTestCase;
-import org.jboss.as.test.integration.domain.management.cli.CliCapabilityCompletionTestCase;
-import org.jboss.as.test.integration.domain.management.cli.CliCompletionTestCase;
-import org.jboss.as.test.integration.domain.management.cli.CloneProfileTestCase;
 import org.jboss.as.test.integration.domain.management.cli.DeployAllDomainTestCase;
-import org.jboss.as.test.integration.domain.management.cli.DeploymentAllDomainTestCase;
-import org.jboss.as.test.integration.domain.management.cli.DeploymentOverlayTestCase;
-import org.jboss.as.test.integration.domain.management.cli.HelpTestCase;
-import org.jboss.as.test.integration.domain.management.cli.HierarchicalCompositionTestCase;
-import org.jboss.as.test.integration.domain.management.cli.UndeployTestCase;
-import org.jboss.as.test.integration.domain.management.cli.UndeployWildcardDomainTestCase;
-import org.jboss.as.test.integration.domain.management.cli.WildCardReadsTestCase;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -52,18 +41,18 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-    BasicOpsTestCase.class,
-    CliCapabilityCompletionTestCase.class,
-    CliCompletionTestCase.class,
-    CloneProfileTestCase.class,
-    UndeployWildcardDomainTestCase.class,
-    UndeployTestCase.class,
-    HelpTestCase.class,
-    HierarchicalCompositionTestCase.class,
-    WildCardReadsTestCase.class,
-    DeployAllDomainTestCase.class,
-    DeploymentOverlayTestCase.class,
-    DeploymentAllDomainTestCase.class
+//    BasicOpsTestCase.class,
+//    CliCapabilityCompletionTestCase.class,
+//    CliCompletionTestCase.class,
+//    CloneProfileTestCase.class,
+//    UndeployWildcardDomainTestCase.class,
+//    UndeployTestCase.class,
+//    HelpTestCase.class,
+//    HierarchicalCompositionTestCase.class,
+//    WildCardReadsTestCase.class,
+//    DeployAllDomainTestCase.class,
+//    DeploymentOverlayTestCase.class,
+    DeployAllDomainTestCase.class
 })
 public class CLITestSuite {
 
