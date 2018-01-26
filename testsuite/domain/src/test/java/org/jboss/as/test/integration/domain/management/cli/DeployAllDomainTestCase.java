@@ -28,8 +28,11 @@ import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandFormatException;
 import org.jboss.as.cli.Util;
 import static org.jboss.as.cli.Util.RESULT;
+
+import org.jboss.as.test.deployment.DeploymentInfoUtils;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
+import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.CLITestUtil;
 import org.jboss.dmr.ModelNode;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -41,6 +44,8 @@ import org.jboss.shrinkwrap.impl.base.exporter.zip.ZipExporterImpl;
 import org.jboss.shrinkwrap.impl.base.path.BasicPath;
 import org.junit.After;
 import org.junit.AfterClass;
+
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -50,7 +55,7 @@ import org.junit.Test;
  *
  * @author jdenise@redhat.com
  */
-public class DeployAllDomainTestCase {
+public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
     protected static File cliTestApp1War;
     protected static File cliTestApp2War;
@@ -60,13 +65,16 @@ public class DeployAllDomainTestCase {
     protected static String sgOne;
     protected static String sgTwo;
 
-    protected CommandContext ctx;
+    protected static CommandContext ctx;
     protected static DomainTestSupport testSupport;
+    protected static DeploymentInfoUtils infoUtils;
 
     @BeforeClass
     public static void before() throws Exception {
         // TODO replace Legacy command by aesh command
         testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
+        infoUtils = new DeploymentInfoUtils();
+
 
         String tempDir = System.getProperty("java.io.tmpdir");
 
@@ -124,14 +132,6 @@ public class DeployAllDomainTestCase {
         // TODO replace Legacy command by aesh command
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
-
-        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
-        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
-        ctx.handle("deploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
-        ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
-
-        // Disable them all.
-        ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
     }
 
     @After
@@ -144,29 +144,30 @@ public class DeployAllDomainTestCase {
         // TODO re-make test
         /*
         For check are used commands 'deployment list' and 'deployment info'
-
         Deploy 3 applications deployments with set server groups
-
         Check if deployment is installed and sets server groups
-
         Disable 2 applications deployments with set server groups
-
         Check if applications deployments is disabled
-
         Enable one application deployment
-
         Check if selected application deployment is enabled
-
         Undeploy one application deployment
-
         Check if selected application deployment is removed
          */
-        checkDeployment(sgOne, cliTestApp1War.getName(), false);
-        checkDeployment(sgOne, cliTestAnotherWar.getName(), false);
-        checkDeployment(sgOne, cliTestAppEar.getName(), false);
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
 
-        checkDeployment(sgTwo, cliTestApp2War.getName(), false);
-        checkDeployment(sgTwo, cliTestAppEar.getName(), false);
+        // Disable them all.
+        ctx.handle("deployment disable-all --all-relevant-server-groups");
+
+        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestApp1War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAppEar.getName(), ADDED);
+
+        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp2War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAppEar.getName(), ADDED);
         // Deploy them all.
         ctx.handle("deploy --name=* --server-groups=" + sgTwo + ',' + sgOne);
         checkDeployment(sgOne, cliTestApp1War.getName(), true);
@@ -192,6 +193,67 @@ public class DeployAllDomainTestCase {
 
         checkDeployment(sgTwo, cliTestApp2War.getName(), true);
         checkDeployment(sgTwo, cliTestAppEar.getName(), true);
+
+        ctx.handle("deployment undeploy * --all-relevant-server-groups");
+    }
+
+    @Test
+    public void testDeploymentLegacyLiveCycleWithServerGroups() throws Exception {
+        // TODO re-make test
+        /*
+        For check are used commands 'deployment list' and 'deployment info'
+        Deploy 3 applications deployments with set server groups
+        Check if deployment is installed and sets server groups
+        Disable 2 applications deployments with set server groups
+        Check if applications deployments is disabled
+        Enable one application deployment
+        Check if selected application deployment is enabled
+        Undeploy one application deployment
+        Check if selected application deployment is removed
+         */
+
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+        // Disable them all.
+        ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
+
+        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestApp1War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAppEar.getName(), ADDED);
+
+        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp2War.getName(), ADDED);
+        infoUtils.reCheckByList(cliTestAppEar.getName(), ADDED);
+        // Deploy them all.
+        ctx.handle("deploy --name=* --server-groups=" + sgTwo + ',' + sgOne);
+        checkDeployment(sgOne, cliTestApp1War.getName(), true);
+        checkDeployment(sgOne, cliTestAnotherWar.getName(), true);
+        checkDeployment(sgOne, cliTestAppEar.getName(), true);
+
+        checkDeployment(sgTwo, cliTestApp2War.getName(), true);
+        checkDeployment(sgTwo, cliTestAppEar.getName(), true);
+
+        ctx.handle("deployment disable-all --all-relevant-server-groups");
+
+        checkDeployment(sgOne, cliTestApp1War.getName(), false);
+        checkDeployment(sgOne, cliTestAnotherWar.getName(), false);
+        checkDeployment(sgOne, cliTestAppEar.getName(), false);
+
+        checkDeployment(sgTwo, cliTestApp2War.getName(), false);
+        checkDeployment(sgTwo, cliTestAppEar.getName(), false);
+        // Deploy them all.
+        ctx.handle("deployment enable-all --server-groups=" + sgTwo + ',' + sgOne);
+        checkDeployment(sgOne, cliTestApp1War.getName(), true);
+        checkDeployment(sgOne, cliTestAnotherWar.getName(), true);
+        checkDeployment(sgOne, cliTestAppEar.getName(), true);
+
+        checkDeployment(sgTwo, cliTestApp2War.getName(), true);
+        checkDeployment(sgTwo, cliTestAppEar.getName(), true);
+
+        ctx.handle("undeploy * --all-relevant-server-groups");
     }
 
     private void checkDeployment(String serverGroup, String name, boolean enabled) throws CommandFormatException, IOException {
