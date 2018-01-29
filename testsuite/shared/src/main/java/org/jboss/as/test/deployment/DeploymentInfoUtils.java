@@ -19,9 +19,11 @@ import org.jboss.as.cli.CommandFormatException;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.logging.Logger;
 
-import java.io.IOException;
-
 /**
+ * Utils for verify state of applications deployments using command 'deployments list' and 'deployments info'.
+ * Uses legacy and Aesh version of commands.
+ * Direct verifying output of this commands.
+ *
  * @author Vratislav Marek (vmarek@redhat.com)
  * @since 26.1.18 15:06
  **/
@@ -51,22 +53,23 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
         }
     }
 
-    public String[] getMemmory(){
+    // #### BEGIN Internal state get method
+    public String[] getMemmory() {
         return this.currentOutputRows;
     }
 
-    public String getServerGroup(){
+    public String getServerGroup() {
         return this.currentServerGroup;
     }
+    // #### END   Internal state get method
 
-    public void checkDeploymentByList(String name) throws CommandFormatException, IOException {
-        this.currentServerGroup = null;
-        callCommand("deployment list");
-        checkMemory(name);
+    // #### BEGIN Direct checking methods
+    public void checkDeploymentByList(String name) throws CommandFormatException {
+        this.readDeploymentList();
+        this.checkMemory(name);
     }
 
     /**
-     *
      * Target of this method is standalone test suit
      *
      * @param name
@@ -74,13 +77,11 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * @throws CommandFormatException
      */
     public void checkDeploymentByInfo(String name, DeploymentState expected) throws CommandFormatException {
-        this.currentServerGroup = null;
-        callCommand("deployment info");
-        checkMemory(name, expected);
+        this.readDeploymentInfo();
+        this.checkMemory(name, expected);
     }
 
     /**
-     *
      * Target of this method is domain test suit
      *
      * @param serverGroup
@@ -89,49 +90,100 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * @throws CommandFormatException
      */
     public void checkDeploymentByInfo(String serverGroup, String name, DeploymentState expected) throws CommandFormatException {
-        this.currentServerGroup = serverGroup;
-        callCommand("deployment info --server-group=" + serverGroup);
+        this.readDeploymentInfo(serverGroup);
         checkMemory(name, expected);
     }
 
     public void checkDeploymentByLegacyInfo(String name, DeploymentState expected) throws CommandFormatException {
-        this.currentServerGroup = null;
-        callCommand("deployment-info");
+        readLegacyDeploymentInfo();
         checkMemory(name, expected);
     }
 
     public void checkDeploymentByLegacyInfo(String serverGroup, String name, DeploymentState expected) throws CommandFormatException {
-        this.currentServerGroup = serverGroup;
-        callCommand("deployment-info --server-group=" + serverGroup);
+        readLegacyDeploymentInfo(serverGroup);
         checkMemory(name, expected);
     }
+    // #### END   Direct checking methods
 
-    public void reCheckMemorisedOutput(String name) throws CommandFormatException {
+    // #### BEGIN Public pre-loading methods
+    public void readDeploymentList() {
+        this.currentServerGroup = null;
+        callCommand("deployment list");
+    }
+
+    public void readDeploymentInfo() {
+        this.readDeploymentInfo(null);
+    }
+
+    public void readDeploymentInfo(String serverGroup) {
+        this.currentServerGroup = serverGroup;
+        String groupPart = this.currentServerGroup != null ? " --server-group=" + serverGroup : "";
+        callCommand("deployment info" + groupPart);
+    }
+
+    public void readLegacyDeploymentInfo() {
+        this.readLegacyDeploymentInfo(null);
+    }
+
+    public void readLegacyDeploymentInfo(String serverGroup) {
+        this.currentServerGroup = serverGroup;
+        String groupPart = this.currentServerGroup != null ? " --server-group=" + serverGroup : "";
+        callCommand("deployment-info" + groupPart);
+    }
+    // #### END   Public pre-loading methods
+
+    // #### BEGIN Method for checking without recalling command for applications deployments state
+    public void checkExistInOutputMemory(String name) throws CommandFormatException {
         checkMemory(name);
     }
 
-    public void reCheckMemorisedOutput(String name, DeploymentState expected) throws CommandFormatException {
-        checkMemory(name, expected);
+    public void checkMissingInOutputMemory(String name) throws CommandFormatException {
+        checkMemory(name, true);
     }
 
+    public void checkExistInOutputMemory(String name, DeploymentState expected) throws CommandFormatException {
+        checkMemory(name, expected);
+    }
+    // #### END   Method for checking without recalling command for applications deployments state
+
+    // #### BEGIN Internal functionality method
     private void callCommand(String command) {
-        log.info("Called command: '" + command + "'");
         cli.sendLine(command);
+        log.info("Called command: '" + command + "'");
         String output = cli.readOutput();
-        log.info("Read output:\n" + output);
-        this.currentOutputRows = output.split("\n");
+        if (output != null && !output.isEmpty()) {
+            log.info("Read output:\n" + output);
+            this.currentOutputRows = output.split("\n");
+        } else {
+            log.info("Read output: --OUTPUT EMPTY--");
+            this.currentOutputRows = new String[]{""};
+        }
+
     }
 
     private void checkMemory(String name) throws CommandFormatException {
         checkMemory(name, null);
     }
 
+    private void checkMemory(String name, boolean invertSearch) throws CommandFormatException {
+        checkMemory(name, null, invertSearch);
+    }
+
     private void checkMemory(String name, DeploymentState expected) throws CommandFormatException {
+        checkMemory(name, expected, false);
+    }
+
+    private void checkMemory(String name, DeploymentState expected, boolean invertSearch) throws CommandFormatException {
         if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
-            throw new CommandFormatException("No result found!");
+            throw new CommandFormatException("No result to check!");
 
         for (String row : this.currentOutputRows) {
             if (row.contains(name)) {
+                if (invertSearch) {
+                    throw new CommandFormatException("Found non wanted application deployment " +
+                            "" + name + " in \n" + String.join("\n",
+                            this.currentOutputRows));
+                }
                 String group = this.currentServerGroup != null ? " for server group '" + this.currentServerGroup + "'" : "";
                 if (expected == null) {
                     log.info("Check existence application deployment '" + name + "' Success");
@@ -145,7 +197,12 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
                         + "' but is\n" + row);
             }
         }
+        if (invertSearch) {
+            log.info("Check non-existence application deployment '" + name + "' Success");
+            return;
+        }
         throw new CommandFormatException("No result for " + name + " in \n" + String.join("\n",
                 this.currentOutputRows));
     }
+    // #### END   Internal functionality method
 }
