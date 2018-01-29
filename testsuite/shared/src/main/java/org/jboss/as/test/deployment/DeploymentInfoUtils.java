@@ -19,6 +19,8 @@ import org.jboss.as.cli.CommandFormatException;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.logging.Logger;
 
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.UNKNOWN;
+
 /**
  * Utils for verify state of applications deployments using command 'deployments list' and 'deployments info'.
  * Uses legacy and Aesh version of commands.
@@ -40,7 +42,17 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     }
 
     public enum DeploymentState {
-        ENABLED("enabled"), ADDED("added"), NOT_ADDED("not added");
+        // Statuses of Domain
+        ENABLED("enabled"), // Represent installed in selected server group and enabled application deployment
+        ADDED("added"), // Represent installed in selected server group but disabled application deployment
+        NOT_ADDED("not added"), // Represents application deployment of other server group that selected server group
+
+        // Statuses of Standalone
+        OK("OK"), // Represent enabled application deployment
+        STOPPED("STOPPED"), // Represent disabled application deployment
+
+        // Error status
+        UNKNOWN("!--unknown--!"); // Default value if isn't found
 
         private String name;
 
@@ -106,29 +118,29 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     // #### END   Direct checking methods
 
     // #### BEGIN Public pre-loading methods
-    public void readDeploymentList() {
+    public String  readDeploymentList() {
         this.currentServerGroup = null;
-        callCommand("deployment list");
+        return callCommand("deployment list");
     }
 
     public void readDeploymentInfo() {
         this.readDeploymentInfo(null);
     }
 
-    public void readDeploymentInfo(String serverGroup) {
+    public String readDeploymentInfo(String serverGroup) {
         this.currentServerGroup = serverGroup;
         String groupPart = this.currentServerGroup != null ? " --server-group=" + serverGroup : "";
-        callCommand("deployment info" + groupPart);
+        return callCommand("deployment info" + groupPart);
     }
 
     public void readLegacyDeploymentInfo() {
         this.readLegacyDeploymentInfo(null);
     }
 
-    public void readLegacyDeploymentInfo(String serverGroup) {
+    public String readLegacyDeploymentInfo(String serverGroup) {
         this.currentServerGroup = serverGroup;
         String groupPart = this.currentServerGroup != null ? " --server-group=" + serverGroup : "";
-        callCommand("deployment-info" + groupPart);
+        return callCommand("deployment-info" + groupPart);
     }
     // #### END   Public pre-loading methods
 
@@ -144,10 +156,35 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     public void checkExistInOutputMemory(String name, DeploymentState expected) throws CommandFormatException {
         checkMemory(name, expected);
     }
+
+    public DeploymentState getStateByOutputMemory(String name) throws CommandFormatException {
+        if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
+            throw new CommandFormatException("No result to check! Call first info command!");
+
+        for (String row : this.currentOutputRows) {
+            if (row.contains(name)) {
+                String group = this.currentServerGroup != null ? " for server group '" + this.currentServerGroup + "'" : "";
+                final DeploymentState[] statuses = DeploymentState.values();
+
+                for (DeploymentState state : statuses) {
+                    if (row.contains(state.getName())) {
+                        log.info("Application deployment are state '" + name + "'->'"
+                                + state.getName() + "'" + group + " Success");
+                        return state;
+                    }
+                }
+                log.warn("Status of application deployment not found! Do you call info command?\n"
+                + row);
+                return UNKNOWN;
+            }
+        }
+        throw new CommandFormatException("No result for " + name + " in \n" + String.join("\n",
+                this.currentOutputRows));
+    }
     // #### END   Method for checking without recalling command for applications deployments state
 
     // #### BEGIN Internal functionality method
-    private void callCommand(String command) {
+    private String callCommand(String command) {
         cli.sendLine(command);
         log.info("Called command: '" + command + "'");
         String output = cli.readOutput();
@@ -158,7 +195,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
             log.info("Read output: --OUTPUT EMPTY--");
             this.currentOutputRows = new String[]{""};
         }
-
+        return output;
     }
 
     private void checkMemory(String name) throws CommandFormatException {
@@ -175,7 +212,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
 
     private void checkMemory(String name, DeploymentState expected, boolean invertSearch) throws CommandFormatException {
         if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
-            throw new CommandFormatException("No result to check!");
+            throw new CommandFormatException("No result to check! Call first info or list command!");
 
         for (String row : this.currentOutputRows) {
             if (row.contains(name)) {
