@@ -1,8 +1,23 @@
+/*
+Copyright 2018 Red Hat, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ */
 package org.jboss.as.test.deployment;
 
 import org.jboss.as.cli.CommandFormatException;
-import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 
@@ -12,11 +27,14 @@ import java.io.IOException;
  **/
 public class DeploymentInfoUtils extends AbstractCliTestBase {
 
-    private String[] currentOutputRows;
+    private static final Logger log = Logger.getLogger(DeploymentInfoUtils.class);
 
-    public DeploymentInfoUtils() throws Exception {
+    private String[] currentOutputRows;
+    private String currentServerGroup;
+
+    public DeploymentInfoUtils(String ipAddress) throws Exception {
         // initialize CLI Wrapper, because for testing require raw command output
-        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
+        AbstractCliTestBase.initCLI(ipAddress);
     }
 
     public enum DeploymentState {
@@ -33,52 +51,98 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
         }
     }
 
-    public void checkDeploymentByList(String name) throws CommandFormatException, IOException {
-        callCommand("deployment list");
-        checkByList(name);
+    public String[] getMemmory(){
+        return this.currentOutputRows;
     }
 
+    public String getServerGroup(){
+        return this.currentServerGroup;
+    }
+
+    public void checkDeploymentByList(String name) throws CommandFormatException, IOException {
+        this.currentServerGroup = null;
+        callCommand("deployment list");
+        checkMemory(name);
+    }
+
+    /**
+     *
+     * Target of this method is standalone test suit
+     *
+     * @param name
+     * @param expected
+     * @throws CommandFormatException
+     */
+    public void checkDeploymentByInfo(String name, DeploymentState expected) throws CommandFormatException {
+        this.currentServerGroup = null;
+        callCommand("deployment info");
+        checkMemory(name, expected);
+    }
+
+    /**
+     *
+     * Target of this method is domain test suit
+     *
+     * @param serverGroup
+     * @param name
+     * @param expected
+     * @throws CommandFormatException
+     */
     public void checkDeploymentByInfo(String serverGroup, String name, DeploymentState expected) throws CommandFormatException {
+        this.currentServerGroup = serverGroup;
         callCommand("deployment info --server-group=" + serverGroup);
-        checkByList(name, expected);
+        checkMemory(name, expected);
+    }
+
+    public void checkDeploymentByLegacyInfo(String name, DeploymentState expected) throws CommandFormatException {
+        this.currentServerGroup = null;
+        callCommand("deployment-info");
+        checkMemory(name, expected);
     }
 
     public void checkDeploymentByLegacyInfo(String serverGroup, String name, DeploymentState expected) throws CommandFormatException {
+        this.currentServerGroup = serverGroup;
         callCommand("deployment-info --server-group=" + serverGroup);
-        checkByList(name, expected);
+        checkMemory(name, expected);
     }
 
-    public void reCheckByList(String name) throws CommandFormatException {
-        checkByList(name);
+    public void reCheckMemorisedOutput(String name) throws CommandFormatException {
+        checkMemory(name);
     }
 
-    public void reCheckByList(String name, DeploymentState expected) throws CommandFormatException {
-        checkByList(name, expected);
+    public void reCheckMemorisedOutput(String name, DeploymentState expected) throws CommandFormatException {
+        checkMemory(name, expected);
     }
 
     private void callCommand(String command) {
+        log.info("Called command: '" + command + "'");
         cli.sendLine(command);
         String output = cli.readOutput();
+        log.info("Read output:\n" + output);
         this.currentOutputRows = output.split("\n");
     }
 
-    private void checkByList(String name) throws CommandFormatException {
-        checkByList(name, null);
+    private void checkMemory(String name) throws CommandFormatException {
+        checkMemory(name, null);
     }
 
-    private void checkByList(String name, DeploymentState expected) throws CommandFormatException {
+    private void checkMemory(String name, DeploymentState expected) throws CommandFormatException {
         if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
             throw new CommandFormatException("No result found!");
 
         for (String row : this.currentOutputRows) {
             if (row.contains(name)) {
-                if (expected == null)
+                String group = this.currentServerGroup != null ? " for server group '" + this.currentServerGroup + "'" : "";
+                if (expected == null) {
+                    log.info("Check existence application deployment '" + name + "' Success");
                     return;
-                else if (row.contains(expected.getName())) {
+                } else if (row.contains(expected.getName())) {
+                    log.info("Check application deployment in right state '" + name + "'->'"
+                            + expected.getName() + "'" + group + " Success");
                     return;
                 }
-                throw new CommandFormatException(name + " not in right state! Expected " + expected.getName() + "\n"
-                        + row);
+                throw new CommandFormatException(name + " not in right state" + group + "! Expected '" + expected.getName()
+                        + "' but is\n" + row);
             }
         }
         throw new CommandFormatException("No result for " + name + " in \n" + String.join("\n",
