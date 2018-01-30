@@ -31,6 +31,7 @@ import static org.jboss.as.cli.Util.READ_ATTRIBUTE;
 import static org.jboss.as.cli.Util.SERVER_GROUP;
 import static org.jboss.as.cli.Util.isSuccess;
 import org.jboss.as.cli.operation.impl.DefaultOperationRequestBuilder;
+import org.jboss.as.test.deployment.DeploymentArchiveUtils;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
 import org.jboss.as.test.integration.management.util.CLITestUtil;
@@ -41,9 +42,12 @@ import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.jboss.shrinkwrap.impl.base.exporter.zip.ZipExporterImpl;
 import org.junit.After;
 import org.junit.AfterClass;
+
+import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchive;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class UndeployTestCase {
@@ -60,13 +64,8 @@ public class UndeployTestCase {
     public static void before() throws Exception {
         testSupport = CLITestSuite.createSupport(UndeployTestCase.class.getSimpleName());
 
-        String tempDir = System.getProperty("java.io.tmpdir");
-
         // deployment1
-        WebArchive war = ShrinkWrap.create(WebArchive.class, "cli-undeploy-test-app1.war");
-        war.addAsWebResource(new StringAsset("Version0"), "page.html");
-        cliTestApp1War = new File(tempDir + File.separator + war.getName());
-        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
+        cliTestApp1War = createWarArchive("cli-undeploy-test-app1.war", "Version0");
 
         final Iterator<String> sgI = CLITestSuite.serverGroups.keySet().iterator();
         if (!sgI.hasNext()) {
@@ -81,7 +80,6 @@ public class UndeployTestCase {
 
     @AfterClass
     public static void after() throws Exception {
-
         CLITestSuite.stopSupport();
 
         cliTestApp1War.delete();
@@ -130,6 +128,7 @@ public class UndeployTestCase {
         checkState(sgTwo, cliTestApp1War.getName(), true);
     }
 
+    @Ignore
     @Test
     public void testUndeployWithAllServerGroups() throws Exception {
         // TODO make test

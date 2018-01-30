@@ -29,6 +29,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import org.jboss.as.test.integration.domain.management.cli.DeployAllDomainTestCase;
+import org.jboss.as.test.integration.domain.management.cli.UndeployTestCase;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -46,13 +47,13 @@ import org.junit.runners.Suite;
 //    CliCompletionTestCase.class,
 //    CloneProfileTestCase.class,
 //    UndeployWildcardDomainTestCase.class,
-//    UndeployTestCase.class,
+    UndeployTestCase.class//,
 //    HelpTestCase.class,
 //    HierarchicalCompositionTestCase.class,
 //    WildCardReadsTestCase.class,
 //    DeployAllDomainTestCase.class,
 //    DeploymentOverlayTestCase.class,
-    DeployAllDomainTestCase.class
+//    DeployAllDomainTestCase.class
 })
 public class CLITestSuite {
 

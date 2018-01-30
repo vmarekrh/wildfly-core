@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.Iterator;
 import org.jboss.as.cli.CommandContext;
 
+import org.jboss.as.test.deployment.DeploymentArchiveUtils;
 import org.jboss.as.test.deployment.DeploymentInfoUtils;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
@@ -40,6 +41,8 @@ import org.jboss.shrinkwrap.impl.base.path.BasicPath;
 import org.junit.After;
 import org.junit.AfterClass;
 
+import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createCliArchive;
+import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createEnterpriseArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.NOT_ADDED;
@@ -71,34 +74,17 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
         infoUtils = new DeploymentInfoUtils(DomainTestSupport.masterAddress);
 
-        String tempDir = System.getProperty("java.io.tmpdir");
-
         // deployment1
-        WebArchive war = ShrinkWrap.create(WebArchive.class, "cli-test-app1-deploy-all.war");
-        war.addAsWebResource(new StringAsset("Version0"), "page.html");
-        cliTestApp1War = new File(tempDir + File.separator + war.getName());
-        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
+        cliTestApp1War = createCliArchive("cli-test-app1-deploy-all.war", "Version0");
 
         // deployment2
-        war = ShrinkWrap.create(WebArchive.class, "cli-test-app2-deploy-all.war");
-        war.addAsWebResource(new StringAsset("Version1"), "page.html");
-        cliTestApp2War = new File(tempDir + File.separator + war.getName());
-        new ZipExporterImpl(war).exportTo(cliTestApp2War, true);
+        cliTestApp2War = createCliArchive("cli-test-app2-deploy-all.war", "Version1");
 
         // deployment3
-        war = ShrinkWrap.create(WebArchive.class, "cli-test-another-deploy-all.war");
-        war.addAsWebResource(new StringAsset("Version2"), "page.html");
-        cliTestAnotherWar = new File(tempDir + File.separator + war.getName());
-        new ZipExporterImpl(war).exportTo(cliTestAnotherWar, true);
+        cliTestAnotherWar = createCliArchive("cli-test-another-deploy-all.war", "Version2");
 
         // deployment4
-        war = ShrinkWrap.create(WebArchive.class, "cli-test-app3-deploy-all.war");
-        war.addAsWebResource(new StringAsset("Version3"), "page.html");
-        final EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class,
-                "cli-test-app-deploy-all.ear");
-        ear.add(war, new BasicPath("/"), ZipExporter.class);
-        cliTestAppEar = new File(tempDir + File.separator + ear.getName());
-        new ZipExporterImpl(ear).exportTo(cliTestAppEar, true);
+        cliTestAppEar = createEnterpriseArchive();
 
         final Iterator<String> sgI = CLITestSuite.serverGroups.keySet().iterator();
         if (!sgI.hasNext()) {
