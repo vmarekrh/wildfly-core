@@ -16,6 +16,7 @@ limitations under the License.
 
 package org.jboss.as.test.deployment;
 
+import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandFormatException;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.logging.Logger;
@@ -35,6 +36,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     private static final Logger log = Logger.getLogger(DeploymentInfoUtils.class);
 
     private String ipAddress;
+    private CommandContext ctx;
 
     private String[] currentOutputRows;
     private String currentServerGroup;
@@ -50,6 +52,10 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
 
     public void disconnectCli() throws Exception {
         AbstractCliTestBase.closeCLI();
+    }
+
+    public void setCommandContextToDoubleCheck(CommandContext ctx) {
+        this.ctx = ctx;
     }
 
 
@@ -197,7 +203,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
 
     // #### BEGIN Internal functionality method
     private String callCommand(String command) {
-        if (cli == null){
+        if (cli == null) {
             throw new IllegalStateException("Cli is not connected! Call connectCli method first!");
         }
 
@@ -240,10 +246,12 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
                 String group = this.currentServerGroup != null ? " for server group '" + this.currentServerGroup + "'" : "";
                 if (expected == null) {
                     log.info("Check existence application deployment '" + name + "' Success");
+                    secondCheckByManagementCommands(name,expected,invertSearch);
                     return;
                 } else if (row.contains(expected.getName())) {
                     log.info("Check application deployment in right state '" + name + "'->'"
                             + expected.getName() + "'" + group + " Success");
+                    secondCheckByManagementCommands(name,expected,invertSearch);
                     return;
                 }
                 throw new CommandFormatException(name + " not in right state" + group + "! Expected '" + expected.getName()
@@ -252,10 +260,18 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
         }
         if (invertSearch) {
             log.info("Check non-existence application deployment '" + name + "' Success");
+            secondCheckByManagementCommands(name,expected,invertSearch);
             return;
         }
         throw new CommandFormatException("No result for " + name + " in \n" + String.join("\n",
                 this.currentOutputRows));
+    }
+
+    private void secondCheckByManagementCommands(String name, DeploymentState expected, boolean invertSearch) {
+        if (ctx == null){
+            return;
+        }
+        // TODO implement double check by managements commands
     }
     // #### END   Internal functionality method
 }
