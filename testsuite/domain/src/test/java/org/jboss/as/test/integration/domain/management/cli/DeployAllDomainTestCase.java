@@ -49,6 +49,7 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.N
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -116,6 +117,8 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
     @After
     public void afterTest() throws Exception {
+        if (infoUtils.readDeploymentList() != null)
+            ctx.handle("deployment undeploy *");
         ctx.terminateSession();
     }
 
@@ -170,14 +173,14 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
         // Step 5) Disable all deployed applications deployments in all server groups
         // TODO #BB01 after fix remove disable with specific group ant get global server group
-//        ctx.handle("deployment disable-all --all-relevant-server-groups");
+        ctx.handle("deployment disable-all --all-relevant-server-groups");
         // TODO remove after test debug finish
 //        ctx.handle("deployment disable-all --server-groups=" + sgOne);
 //        ctx.handle("deployment disable-all --server-groups=" + sgTwo);
-        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
-        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getName());
-        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
-        ctx.handle("deployment disable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
+//        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
+//        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getName());
+//        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
+//        ctx.handle("deployment disable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
         // #BB01
 
         // Step 6) Check if all applications deployments is disabled in all server groups
@@ -191,20 +194,21 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
 
-        // TODO dal ověřit zda li je to podle pravdy - psáno pouze
+        // TODO #DD Uncomment after fix issue
         // Step 7) Enable one application deployment
-//        ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
+        ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
 
         // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-//        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-//
-//        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+
+        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        // #DD
 
         // Step 9) Enable all applications deployments for all server groups
         ctx.handle("deployment enable-all --all-server-groups");
@@ -294,14 +298,14 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
         // Step 5) Disable all deployed applications deployments in all server groups
         // TODO #BB01 after fix remove disable with specific group ant get global server group
-//        ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
+        ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
         // TODO remove after test debug finish
 //        ctx.handle("undeploy * --keep-content --server-groups=" + sgOne);
 //        ctx.handle("undeploy * --keep-content --server-groups=" + sgTwo);
-        ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
-        ctx.handle("undeploy " + cliTestAnotherWar.getName() + " --keep-content --server-groups=" + sgOne);
-        ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
-        ctx.handle("undeploy " + cliTestAppEar.getName() + " --keep-content --server-groups=" + sgTwo + ',' + sgOne);
+//        ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
+//        ctx.handle("undeploy " + cliTestAnotherWar.getName() + " --keep-content --server-groups=" + sgOne);
+//        ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
+//        ctx.handle("undeploy " + cliTestAppEar.getName() + " --keep-content --server-groups=" + sgTwo + ',' + sgOne);
         // #BB01
 
         // Step 6) Check if all applications deployments is disabled in all server groups
@@ -315,20 +319,21 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
 
-        // TODO dal ověřit zda li je to podle pravdy - psáno pouze
+        // TODO #DD Uncomment after fix issue
         // Step 7) Enable one application deployment
-//        ctx.handle("deploy --name=" + cliTestAppEar.getName() + " --server-groups=" + sgTwo + ',' + sgOne);
+        ctx.handle("deploy --name=" + cliTestAppEar.getName() + " --server-groups=" + sgTwo + ',' + sgOne);
 
         // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-//        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-//
-//        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+
+        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        // #DD
 
         // Step 9) Enable all applications deployments for all server groups
         ctx.handle("deploy --name=* --server-groups=" + sgTwo + ',' + sgOne);

@@ -1,3 +1,18 @@
+/*
+Copyright 2018 Red Hat, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ */
 package org.jboss.as.test.deployment;
 
 import org.jboss.as.test.shared.TestSuiteEnvironment;
@@ -18,12 +33,21 @@ import java.io.File;
  **/
 public class DeploymentArchiveUtils {
 
+    protected static final String DEFAULT_WAR_ARCHIVE_NAME = "default-cli-test-app-deplo.war";
+    protected static final String DEFAULT_WAR_ARCHIVE_CONTENT = "Version0.00";
+    protected static final String DEFAULT_CLI_ARCHIVE_NAME = "deploymentarchive.cli";
+    protected static final String DEFAULT_CLI_ARCHIVE_CONTENT = "ls -l";
+    protected static final String DEFAULT_ENTERPRISE_ARCHIVE_NAME = "cli-test-app-deploy-all.ear";
+    protected static final String DEFAULT_ENTERPRISE_ARCHIVE_SUBNAME = "cli-test-app3-deploy-all.war";
+    protected static final String DEFAULT_ENTERPRISE_ARCHIVE_CONTENT = "Version3.00";
+
+
     private DeploymentArchiveUtils() {
         //
     }
 
     public static File createWarArchive() {
-        return createWarArchive("default-cli-test-app-deplo.war", "Version0");
+        return createWarArchive(DEFAULT_WAR_ARCHIVE_NAME, DEFAULT_WAR_ARCHIVE_CONTENT);
     }
 
     public static File createWarArchive(String archiveName, String content) {
@@ -37,8 +61,17 @@ public class DeploymentArchiveUtils {
         return file;
     }
 
+    /**
+     *
+     * @param content Content in archive file deploy.scr
+     * @return prepared file
+     */
+    public static File createCliArchive(String content) {
+        return createCliArchive(DEFAULT_CLI_ARCHIVE_NAME, content);
+    }
+
     public static File createCliArchive() {
-        return createCliArchive("deploymentarchive.cli", "ls -l");
+        return createCliArchive(DEFAULT_CLI_ARCHIVE_NAME, DEFAULT_CLI_ARCHIVE_CONTENT);
     }
 
     public static File createCliArchive(String archiveName, String content) {
@@ -53,8 +86,8 @@ public class DeploymentArchiveUtils {
     }
 
     public static File createEnterpriseArchive() {
-        return createEnterpriseArchive("cli-test-app-deploy-all.ear",
-                "cli-test-app3-deploy-all.war", "Version3");
+        return createEnterpriseArchive(DEFAULT_ENTERPRISE_ARCHIVE_NAME,
+                DEFAULT_ENTERPRISE_ARCHIVE_SUBNAME, DEFAULT_ENTERPRISE_ARCHIVE_CONTENT);
     }
 
     public static File createEnterpriseArchive(String archiveName, String subArchiveName, String content) {

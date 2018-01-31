@@ -73,13 +73,13 @@ public class DeployTestCase {
     private static File cliTestApp1War;
     private static File cliTestApp2War;
     private static File cliTestAnotherWar;
+    private static File tempCliTestAppWar;
 
     private static DeploymentInfoUtils infoUtils;
     private static CommandContext ctx;
 
     @BeforeClass
     public static void before() throws Exception {
-        // TODO replace Legacy command by aesh command
         CommandContextConfiguration.Builder configBuilder = new CommandContextConfiguration.Builder();
         configBuilder.setInitConsole(true).setConsoleInput(System.in).setConsoleOutput(System.out).
                 setController("remote+http://" + TestSuiteEnvironment.getServerAddress()
@@ -87,6 +87,7 @@ public class DeployTestCase {
         ctx = CommandContextFactory.getInstance().newCommandContext(configBuilder.build());
         ctx.connectController();
         infoUtils = new DeploymentInfoUtils(TestSuiteEnvironment.getServerAddress());
+        infoUtils.connectCli();
 
         // deployment1
         cliTestApp1War = createWarArchive("cli-test-app1-deploy.war", "Version0");
@@ -96,52 +97,48 @@ public class DeployTestCase {
 
         // deployment3
         cliTestAnotherWar = createWarArchive("cli-test-another-deploy.war", "Version2");
-
-//        ctx.handle("deployment deploy-file --disabled " + cliTestApp1War.getAbsolutePath());
-//        ctx.handle("deployment deploy-file --disabled " + cliTestAnotherWar.getAbsolutePath());
-//        ctx.handle("deployment deploy-file --disabled " + cliTestApp2War.getAbsolutePath());
-
-//        ctx.handle("deploy --disabled " + cliTestApp1War.getAbsolutePath());
-//        ctx.handle("deploy --disabled " + cliTestAnotherWar.getAbsolutePath());
-//        ctx.handle("deploy --disabled " + cliTestApp2War.getAbsolutePath());
     }
 
     @AfterClass
     public static void after() throws Exception {
         ctx.terminateSession();
+        infoUtils.disconnectCli();
+
         cliTestApp1War.delete();
         cliTestApp2War.delete();
         cliTestAnotherWar.delete();
     }
 
-    @Before
-    public void beforeTest() throws Exception {
-//        infoUtils.readDeploymentInfo();
-//        if (infoUtils.getStateByOutputMemory(cliTestApp1War.getName()) != STOPPED) {
-//            ctx.handle("deployment disable " + cliTestApp1War.getName());
-//        }
-//        if (infoUtils.getStateByOutputMemory(cliTestAnotherWar.getName()) != STOPPED) {
-//            ctx.handle("deployment disable " + cliTestAnotherWar.getName());
-//        }
-//        if (infoUtils.getStateByOutputMemory(cliTestApp2War.getName()) != STOPPED) {
-//            ctx.handle("deployment disable " + cliTestApp2War.getName());
-//        }
-//        infoUtils.readDeploymentInfo();
-//        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), STOPPED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
-    }
+//    @Before
+//    public void beforeTest() throws Exception {
+////        infoUtils.readDeploymentInfo();
+////        if (infoUtils.getStateByOutputMemory(cliTestApp1War.getName()) != STOPPED) {
+////            ctx.handle("deployment disable " + cliTestApp1War.getName());
+////        }
+////        if (infoUtils.getStateByOutputMemory(cliTestAnotherWar.getName()) != STOPPED) {
+////            ctx.handle("deployment disable " + cliTestAnotherWar.getName());
+////        }
+////        if (infoUtils.getStateByOutputMemory(cliTestApp2War.getName()) != STOPPED) {
+////            ctx.handle("deployment disable " + cliTestApp2War.getName());
+////        }
+////        infoUtils.readDeploymentInfo();
+////        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), STOPPED);
+////        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
+////        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
+//    }
 
     @After
     public void afterTest() throws Exception {
         if (infoUtils.readDeploymentList() != null)
             ctx.handle("deployment undeploy *");
+        if (tempCliTestAppWar != null){
+            tempCliTestAppWar.delete();
+        }
     }
-
 
     @Test
     public void testDeploymentLiveCycle() throws Exception {
-        // Step 1) Deploy applications deployments to defined server groups
+        // Step 1) Deploy applications deployments
         ctx.handle("deployment deploy-file " + cliTestApp1War.getAbsolutePath());
         ctx.handle("deployment deploy-file " + cliTestAnotherWar.getAbsolutePath());
         ctx.handle("deployment deploy-file " + cliTestApp2War.getAbsolutePath());
@@ -151,7 +148,7 @@ public class DeployTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName());
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName());
 
-        // Step 2b) Verify if applications deployments are enabled for defined server groups by info command
+        // Step 2b) Verify if applications deployments are enabled by info command
         infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
@@ -164,10 +161,10 @@ public class DeployTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
 
-        // Step 5) Disable all deployed applications deployments in all server groups
+        // Step 5) Disable all deployed applications deployments
         ctx.handle("deployment disable-all");
 
-        // Step 6) Check if all applications deployments is disabled in all server groups
+        // Step 6) Check if all applications deployments is disabled
         infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), STOPPED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
@@ -180,16 +177,17 @@ public class DeployTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
 
-        // Step 9) Enable all applications deployments for all server groups
+        // Step 9) Enable all applications deployments
         ctx.handle("deployment enable-all");
 
-        // Step 10) Verify if all applications deployments are enabled for all server groups
+        // Step 10) Verify if all applications deployments are enabled
         infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
 
         // Step 11) Undeploy one application deployment
         ctx.handle("deployment undeploy " + cliTestApp2War.getName());
+
         // Step 12) Check if selected application deployment is removed, but others still exist with right state
         infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
@@ -197,6 +195,7 @@ public class DeployTestCase {
 
         // Step 13) Undeploy all applications deployments
         ctx.handle("deployment undeploy *");
+
         // Step 14) Check if all applications deployments is gone
         infoUtils.readDeploymentList();
         infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
@@ -228,149 +227,119 @@ public class DeployTestCase {
         }
     }
 
-    @Ignore
     @Test
     public void testLegacyRedeployFileDeployment() throws Exception {
-        // TODO re-make test
-        /*
-        Prepare application deployment for redeploy
-        Check if prepared application deployments is installed
-        Try redeploy same application deployment
-        Check if application deployments is redeployed
-        Using backward compatibility commands
-         */
-        redeploy("deploy --force", false);
-        redeploy("deploy --force", true);
+        // Step 1) Prepare application deployment archive
+        tempCliTestAppWar = createWarArchive("cli-test-app-redeploy.war", "VersionDeploy1.01");
 
-        // Step 1) Deploy applications deployments to defined server groups
-        ctx.handle("deployment deploy-file " + cliTestAnotherWar.getAbsolutePath());
+        // Step 2) Deploy application deployment
+        ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
 
-        // Step 2a) Verify if deployment are successful by list command
-        infoUtils.checkDeploymentByList(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName());
+        // Step 3) Verify if application deployment is deployed and enabled by info command
+        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
 
-        // Step 2b) Verify if applications deployments are enabled for defined server groups by info command
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        // Step 4) Delete previous application deployment archive and create new for redeploy
+        tempCliTestAppWar.delete();
+        tempCliTestAppWar = createWarArchive("cli-test-app-redeploy.war", "VersionReDeploy2.02");
 
+        // Step 5) Try redeploy application deployment
+        ctx.handle("deploy --force " + tempCliTestAppWar.getAbsolutePath());
+
+        // Step 6) Verify if application deployment is deployed and enabled by info command
+        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
+        // TODO read page.html and check content
     }
 
     private void redeploy(String cmd, boolean enabled) throws Exception {
-//        WebArchive war = ShrinkWrap.create(WebArchive.class, "cli-test-app1-deploy.war");
-//        war.addAsWebResource(new StringAsset("Version0.1"), "page.html");
-//        cliTestApp1War.delete();
-//        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
-//        {
-//            ctx.handle(cmd + " " + cliTestApp1War.getAbsolutePath());
-//            checkDeployment(cliTestApp1War.getName(), enabled);
-//        }
-//        String op;
-//        if(enabled) {
-//            op = "undeploy";
-//        } else {
-//            op = "deploy";
-//        }
-//        ctx.handle("/deployment=" + cliTestApp1War.getName() + ':'+op+"()");
-//        assertEquals(!enabled, readDeploymentStatus(cliTestApp1War.getName()));
-//        war = ShrinkWrap.create(WebArchive.class, "cli-test-app1-deploy.war");
-//        war.addAsWebResource(new StringAsset("Version0.2"), "page.html");
-//        cliTestApp1War.delete();
-//        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
-//        {
-//            ctx.handle(cmd + " " + cliTestApp1War.getAbsolutePath());
-//            checkDeployment(cliTestApp1War.getName(), !enabled);
-//        }
+        WebArchive war = ShrinkWrap.create(WebArchive.class, "cli-test-app1-deploy.war");
+        war.addAsWebResource(new StringAsset("Version0.1"), "page.html");
+        cliTestApp1War.delete();
+        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
+        {
+            ctx.handle(cmd + " " + cliTestApp1War.getAbsolutePath());
+            //checkDeployment(cliTestApp1War.getName(), enabled);
+        }
+        String op;
+        if(enabled) {
+            op = "undeploy";
+        } else {
+            op = "deploy";
+        }
+        ctx.handle("/deployment=" + cliTestApp1War.getName() + ':'+op+"()");
+        //assertEquals(!enabled, readDeploymentStatus(cliTestApp1War.getName()));
+        war = ShrinkWrap.create(WebArchive.class, "cli-test-app1-deploy.war");
+        war.addAsWebResource(new StringAsset("Version0.2"), "page.html");
+        cliTestApp1War.delete();
+        new ZipExporterImpl(war).exportTo(cliTestApp1War, true);
+        {
+            ctx.handle(cmd + " " + cliTestApp1War.getAbsolutePath());
+            //checkDeployment(cliTestApp1War.getName(), !enabled);
+        }
     }
 
-    @Ignore
     @Test
     public void testRedeployFileDeployment() throws Exception {
-        // TODO re-make test
-        /*
-        For check are used commands 'deployment list'
+        // Step 1) Prepare application deployment archive
+        tempCliTestAppWar = createWarArchive("cli-test-app-redeploy.war", "VersionDeploy1.01");
 
-        Prepare application deployment for redeploy
+        // Step 2) Deploy application deployment
+        ctx.handle("deployment deploy-file " + tempCliTestAppWar.getAbsolutePath());
 
-        Check if prepared application deployments is installed
+        // Step 3) Verify if application deployment is deployed and enabled by info command
+        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
 
-        Try redeploy same application deployment
+        // Step 4) Delete previous application deployment archive and create new for redeploy
+        tempCliTestAppWar.delete();
+        tempCliTestAppWar = createWarArchive("cli-test-app-redeploy.war", "VersionReDeploy2.02");
 
-        Check if application deployments is redeployed
-         */
-        redeploy("deployment deploy-file --replace", false);
-        redeploy("deployment deploy-file --replace", true);
+        // Step 5) Try redeploy application deployment
+        ctx.handle("deployment deploy-file --replace " + tempCliTestAppWar.getAbsolutePath());
+
+        // Step 6) Verify if application deployment is deployed and enabled by info command
+        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
+        // TODO read page.html and check content
     }
 
-    @Ignore
     @Test
     public void testLegacyDeployUndeployViaCliArchive() throws Exception {
-        // TODO re-make test
         /*
         Deploy one application deployment via cli archive
-
         Using backward compatibility commands
          */
-        File cliFile = createCliArchive();
-        try {
-            ctx.handle("deploy " + cliFile.getAbsolutePath());
-        } finally {
-            cliFile.delete();
-        }
+        tempCliTestAppWar = createCliArchive();
+        ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
     }
 
-    @Ignore
     @Test
     public void testDeployUndeployViaCliArchive() throws Exception {
-        // TODO re-make test
         /*
         Deploy one application deployment via cli archive
          */
-        File cliFile = createCliArchive();
-        try {
-            ctx.handle("deployment deploy-cli-archive " + cliFile.getAbsolutePath());
-        } finally {
-            cliFile.delete();
-        }
+        tempCliTestAppWar = createCliArchive();
+        ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getAbsolutePath());
     }
 
-    @Ignore
     @Test
     public void testLegacyDeployUndeployViaCliArchiveWithTimeout() throws Exception {
-        // TODO re-make test
         /*
-        Operation is limited by 2000 second only
-
+        Operation is limited by 2000 second only // realy? 2000? set num_seconds        - set the timeout to a number of seconds.
         Deploy one application deployment via cli archive
-
         Using backward compatibility commands
          */
-        File cliFile = createCliArchive();
-        try {
-            ctx.handle("command-timeout set 2000");
-            ctx.handle("deploy " + cliFile.getAbsolutePath());
-        } finally {
-            cliFile.delete();
-        }
+        tempCliTestAppWar = createCliArchive();
+        ctx.handle("command-timeout set 2");
+        ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
     }
 
-    @Ignore
     @Test
     public void testDeployUndeployViaCliArchiveWithTimeout() throws Exception {
-        // TODO re-make test
         /*
-        Operation is limited by 2000 second only
-
+        Operation is limited by 2000 second only // realy? 2000? set num_seconds        - set the timeout to a number of seconds.
         Deploy one application deployment via cli archive
          */
-        File cliFile = createCliArchive();
-        try {
-            ctx.handle("command-timeout set 2000");
-            ctx.handle("deployment deploy-cli-archive " + cliFile.getAbsolutePath());
-        } finally {
-            cliFile.delete();
-        }
+        tempCliTestAppWar = createCliArchive();
+        ctx.handle("command-timeout set 2");
+        ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getAbsolutePath());
     }
 
     @Ignore
@@ -379,17 +348,11 @@ public class DeployTestCase {
         // TODO make test
         /*
         Deploy disabled 3 applications deployments
-
         Check if applications deployments is installed and disabled
-
         Enable all applications deployments
-
         Check if applications deployments is enabled
-
         Disable all applications deployments
-
         Check if applications deployments is disabled
-
         Using backward compatibility commands
          */
     }
@@ -400,9 +363,7 @@ public class DeployTestCase {
         // TODO make test
         /*
         For check are used commands 'deployment list'
-
         Deploy application deployment via url link
-
         Check if application deployments is installed
          */
     }
@@ -413,11 +374,8 @@ public class DeployTestCase {
         // TODO make test
         /*
         For check are used commands 'deployment list' and 'deployment info'
-
         Deploy 3 applications deployments
-
         Disable one deployed deployment
-
         Parse and check deployment info command output
          */
     }
@@ -428,7 +386,6 @@ public class DeployTestCase {
         // TODO make test
         /*
         Try deploy application deployments with wrong path
-
         Check error message
          */
     }
@@ -439,7 +396,6 @@ public class DeployTestCase {
         // TODO make test
         /*
         Try deploy application deployments with wrong url
-
         Check error message
          */
     }
@@ -450,7 +406,6 @@ public class DeployTestCase {
         // TODO make test
         /*
         Try deploy application deployments with wrong path
-
         Check error message
          */
     }
@@ -461,7 +416,6 @@ public class DeployTestCase {
         // TODO make test
         /*
         Try disable non installed application deployment
-
         Check error message
          */
 
@@ -473,11 +427,8 @@ public class DeployTestCase {
         // TODO make test
         /*
         Deploy disabled application deployment
-
         Check if application deployment is installed and disabled
-
         Try disable already disabled application deployment
-
         Check error message
          */
     }
@@ -488,7 +439,6 @@ public class DeployTestCase {
         // TODO make test
         /*
         Try enable non installed application deployment
-
         Check error message
          */
     }

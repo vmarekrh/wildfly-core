@@ -137,7 +137,6 @@ public class UndeployWildcardDomainTestCase {
 
     @After
     public void afterTest() throws Exception {
-        // TODO replace Legacy command by aesh command
         StringBuilder buf = undeploy(null, cliTestApp1War.getName(), sgOne);
         buf = undeploy(buf, cliTestAnotherWar.getName(), sgOne);
         buf = undeploy(buf, cliTestApp2War.getName(), sgTwo);
@@ -153,6 +152,7 @@ public class UndeployWildcardDomainTestCase {
     }
 
     protected StringBuilder undeploy(StringBuilder buf, String deployment, String sg) {
+        // TODO replace Legacy command by aesh command
         ctx.handleSafe("undeploy --server-groups=" + sg + ' ' + deployment);
         if(ctx.getExitCode() == 0) {
             if(!afterTestDeployments.remove(deployment)) {

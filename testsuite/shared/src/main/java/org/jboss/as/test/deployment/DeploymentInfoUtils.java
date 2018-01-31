@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
+
 package org.jboss.as.test.deployment;
 
 import org.jboss.as.cli.CommandFormatException;
@@ -33,13 +34,24 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
 
     private static final Logger log = Logger.getLogger(DeploymentInfoUtils.class);
 
+    private String ipAddress;
+
     private String[] currentOutputRows;
     private String currentServerGroup;
 
     public DeploymentInfoUtils(String ipAddress) throws Exception {
         // initialize CLI Wrapper, because for testing require raw command output
+        this.ipAddress = ipAddress;
+    }
+
+    public void connectCli() throws Exception {
         AbstractCliTestBase.initCLI(ipAddress);
     }
+
+    public void disconnectCli() throws Exception {
+        AbstractCliTestBase.closeCLI();
+    }
+
 
     public enum DeploymentState {
         // Statuses of Domain
@@ -118,7 +130,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     // #### END   Direct checking methods
 
     // #### BEGIN Public pre-loading methods
-    public String  readDeploymentList() {
+    public String readDeploymentList() {
         this.currentServerGroup = null;
         return callCommand("deployment list");
     }
@@ -174,7 +186,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
                     }
                 }
                 log.warn("Status of application deployment not found! Do you call info command?\n"
-                + row);
+                        + row);
                 return UNKNOWN;
             }
         }
@@ -185,6 +197,10 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
 
     // #### BEGIN Internal functionality method
     private String callCommand(String command) {
+        if (cli == null){
+            throw new IllegalStateException("Cli is not connected! Call connectCli method first!");
+        }
+
         cli.sendLine(command);
         log.info("Called command: '" + command + "'");
         String output = cli.readOutput();

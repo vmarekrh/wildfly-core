@@ -47,13 +47,13 @@ import org.junit.runners.Suite;
 //    CliCompletionTestCase.class,
 //    CloneProfileTestCase.class,
 //    UndeployWildcardDomainTestCase.class,
-    UndeployTestCase.class//,
+//    UndeployTestCase.class//,
 //    HelpTestCase.class,
 //    HierarchicalCompositionTestCase.class,
 //    WildCardReadsTestCase.class,
 //    DeployAllDomainTestCase.class,
 //    DeploymentOverlayTestCase.class,
-//    DeployAllDomainTestCase.class
+    DeployAllDomainTestCase.class
 })
 public class CLITestSuite {
 
