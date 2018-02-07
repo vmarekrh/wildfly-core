@@ -23,6 +23,7 @@ package org.jboss.as.test.integration.domain.management.cli;
 
 import java.io.File;
 import java.util.Iterator;
+
 import org.jboss.as.cli.CommandContext;
 
 import org.jboss.as.test.deployment.DeploymentInfoUtils;
@@ -36,6 +37,7 @@ import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchi
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.junit.Assert.fail;
+
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -94,6 +96,12 @@ public class UndeployTestCase {
         infoUtils.resetDoubleCheck();
     }
 
+    /**
+     * Test undeploying operation by one application deployment to undeploy all by wildcard in all server group.
+     * Uses legacy commands.
+     *
+     * @throws Exception
+     */
     @Test
     public void testLegacyUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deploy --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());
@@ -115,6 +123,11 @@ public class UndeployTestCase {
         infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
     }
 
+    /**
+     * Test undeploying operation by one application deployment to undeploy all by wildcard in all server group.
+     *
+     * @throws Exception
+     */
     @Test
     public void testUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deployment deploy-file --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());

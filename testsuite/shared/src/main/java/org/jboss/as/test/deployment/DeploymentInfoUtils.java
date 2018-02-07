@@ -25,6 +25,7 @@ import org.wildfly.common.annotation.NotNull;
 
 import java.io.IOException;
 
+import static org.hamcrest.core.AllOf.allOf;
 import static org.jboss.as.cli.Util.FAILED;
 import static org.jboss.as.cli.Util.FAILURE_DESCRIPTION;
 import static org.jboss.as.cli.Util.OUTCOME;
@@ -34,6 +35,11 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.N
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.UNKNOWN;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.mapBooleanByDeploymentStatus;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.StringContains.containsString;
+import static org.junit.Assert.fail;
+
 /**
  * Utils for verify state of applications deployments using command 'deployments list' and 'deployments info'.
  * Uses legacy and Aesh version of commands.
@@ -41,17 +47,21 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.m
  * Support double check verification in case set CommandContext by management command.
  *
  * @author Vratislav Marek (vmarek@redhat.com)
- * @since 26.1.18 15:06
  **/
 public class DeploymentInfoUtils extends AbstractCliTestBase {
+    private static final String OUTPUT_EMPTY_MARK = "--OUTPUT EMPTY--";
 
     private static final Logger log = Logger.getLogger(DeploymentInfoUtils.class);
 
+    // Ip address for connection to cli by 'AbstractCliTestBase.initCLI(ipAddress)'
     private String ipAddress;
+    // In case you disabled double checking, this variable is for enable double checking without parameter
     private CommandContext disabledCtx;
     private CommandContext ctx;
 
+    // Holding output of last time called command for multiple checking output without recall command
     private String[] currentOutputRows;
+    // Server group name in last time called command
     private String currentServerGroup;
 
     public DeploymentInfoUtils(String ipAddress) {
@@ -222,8 +232,8 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * Using Legacy command.
      *
      * @param serverGroup Server group in case of domain mode run
-     * @param name     Represent name of application deployment for testing
-     * @param expected Expected state of application deployment
+     * @param name        Represent name of application deployment for testing
+     * @param expected    Expected state of application deployment
      * @throws CommandFormatException Throw in case of assert failure
      * @throws IOException            Throw in case of problem with execute management command
      */
@@ -240,7 +250,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * Save output to internal memory to checking application deployments.
      * After this you can start call checking function without expected state
      *
-     * @return Return output of command
+     * @return Return output of command, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     public String readDeploymentList() {
         this.currentServerGroup = null;
@@ -253,7 +263,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * After this you can start call checking function with expected state
      * For standalone mode.
      *
-     * @return Return output of command
+     * @return Return output of command, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     public String readDeploymentInfo() {
         return this.readDeploymentInfo(null);
@@ -265,7 +275,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * After this you can start call checking function with expected state
      * For domain mode.
      *
-     * @return Return output of command
+     * @return Return output of command, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     public String readDeploymentInfo(String serverGroup) {
         this.currentServerGroup = serverGroup;
@@ -280,7 +290,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * For standalone mode.
      * Using Legacy command.
      *
-     * @return Return output of command
+     * @return Return output of command, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     public String readLegacyDeploymentInfo() {
         return this.readLegacyDeploymentInfo(null);
@@ -293,7 +303,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * For domain mode.
      * Using Legacy command.
      *
-     * @return Return output of command
+     * @return Return output of command, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     public String readLegacyDeploymentInfo(String serverGroup) {
         this.currentServerGroup = serverGroup;
@@ -348,6 +358,22 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
     }
 
     /**
+     * Checking if called command has empty output.
+     * Checking in pre loaded memory, for reduce called command in cli for more asserts for one command call
+     * <p>
+     * First call method 'readDeploymentX' or 'checkDeploymentX'!
+     *
+     * @return If command output is empty return true, else If command has some output return false
+     * @throws CommandFormatException If you don't call info method! Nothing to check!
+     */
+    public boolean isOutputEmpty() throws CommandFormatException {
+        if (this.currentOutputRows == null || this.currentOutputRows.length <= 0) {
+            throw new CommandFormatException("Error: Nothing to check! Call first info command!");
+        }
+        return this.currentOutputRows.length <= 1 && this.currentOutputRows[0].contains(OUTPUT_EMPTY_MARK);
+    }
+
+    /**
      * In case you need know state of application deployment
      *
      * @param name Name of application deployment
@@ -355,8 +381,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * @throws CommandFormatException
      */
     public DeploymentState getStateByOutputMemory(String name) throws CommandFormatException {
-        if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
-            throw new CommandFormatException("No result to check! Call first info command!");
+        this.isOutputEmpty();
 
         for (String row : this.currentOutputRows) {
             if (row.contains(name)) {
@@ -386,7 +411,7 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
      * Calling command in Cli, split output by lines and fill internal memory
      *
      * @param command Command for call
-     * @return Readed output
+     * @return Readied output, if is output empty return {@value OUTPUT_EMPTY_MARK} mark
      */
     private String callCommand(String command) {
         if (cli == null) {
@@ -400,8 +425,9 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
             log.info("Read output:\n" + output);
             this.currentOutputRows = output.split("\n");
         } else {
-            log.info("Read output: --OUTPUT EMPTY--");
-            this.currentOutputRows = new String[]{""};
+            log.info("Read output: " + OUTPUT_EMPTY_MARK);
+            this.currentOutputRows = new String[]{OUTPUT_EMPTY_MARK};
+            return OUTPUT_EMPTY_MARK;
         }
         return output;
     }
@@ -466,16 +492,17 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
         if (UNKNOWN.equals(expected)) {
             throw new CommandFormatException("Could not verify deployment state " + UNKNOWN + "!");
         }
-        if (this.currentOutputRows == null || this.currentOutputRows.length <= 0)
-            throw new CommandFormatException("No result to check! Call first info or list command!");
+        this.isOutputEmpty();
 
         for (String row : this.currentOutputRows) {
+
             if (row.contains(name)) {
                 if (invertSearch) {
-                    throw new CommandFormatException("Found non wanted application deployment " +
+                    fail("Found non wanted application deployment " +
                             "" + name + " in \n" + String.join("\n",
                             this.currentOutputRows));
                 }
+
                 String group = this.currentServerGroup != null ? " for server group '" + this.currentServerGroup + "'" : "";
                 if (expected == null) {
                     log.info("Check existence application deployment '" + name + "' Success");
@@ -486,7 +513,8 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
                     secondCheckByManagementCommands(name, expected, invertSearch);
                     return;
                 }
-                throw new CommandFormatException(name + " not in right state" + group + "! Expected '" + expected.getTitle()
+
+                fail(name + " not in right state" + group + "! Expected '" + expected.getTitle()
                         + "' but is\n" + row);
             }
         }
@@ -524,27 +552,21 @@ public class DeploymentInfoUtils extends AbstractCliTestBase {
         ModelNode mn = ctx.buildRequest(serverGroup + "/deployment=" + name + ":read-attribute(name=enabled)");
         ModelNode response = ctx.getModelControllerClient().execute(mn);
         if (response.hasDefined(OUTCOME) && response.get(OUTCOME).asString().equals(SUCCESS)) {
-            if (!response.hasDefined(RESULT)) {
-                throw new CommandFormatException("No result for " + name);
-            }
+
+            assertThat("No result for " + name, response.hasDefined(RESULT), is(true));
             boolean enabled = invertSearch != mapBooleanByDeploymentStatus(expected);
-            if (!response.get(RESULT).asBoolean() == enabled) {
-                throw new CommandFormatException(name + " not in right state");
-            }
+            assertThat(name + " not in right state", response.get(RESULT).asBoolean(), is(enabled));
+
         } else if (response.hasDefined(OUTCOME) && response.get(OUTCOME).asString().equals(FAILED) && NOT_ADDED.equals(expected)) {
-            if (!response.hasDefined(FAILURE_DESCRIPTION)) {
-                throw new CommandFormatException("No result for " + name);
-            }
+
+            assertThat("No result for " + name, response.hasDefined(FAILURE_DESCRIPTION), is(true));
             // Verify error message
-            final String failDesc = response.get(FAILURE_DESCRIPTION).asString();
-            boolean pass = failDesc.contains("WFLYCTL0216: Management resource");
-            pass &= failDesc.contains("not found");
-            pass &= failDesc.contains(name);
-            pass &= failDesc.contains(this.currentServerGroup);
-            if (!pass) {
-                throw new CommandFormatException("Wrong error message for missing deployment " + name +
-                        " in server group " + this.currentServerGroup);
-            }
+            assertThat("Wrong error message for missing deployment " + name + " in server group " + this.currentServerGroup,
+                    response.get(FAILURE_DESCRIPTION).asString(), allOf(
+                            containsString("WFLYCTL0216: Management resource"),
+                            containsString("not found"),
+                            containsString(name),
+                            containsString(this.currentServerGroup)));
         } else {
             throw new CommandFormatException("Invalid response for " + name);
         }

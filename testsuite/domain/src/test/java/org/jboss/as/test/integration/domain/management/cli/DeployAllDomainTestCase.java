@@ -35,11 +35,14 @@ import org.jboss.as.test.integration.management.util.CLITestUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createCliArchive;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createEnterpriseArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.NOT_ADDED;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import org.junit.Before;
@@ -114,12 +117,33 @@ public class DeployAllDomainTestCase {
     }
 
     @After
-    public void afterTest(){
+    public void afterTest() {
         ctx.handleSafe("deployment undeploy * --all-relevant-server-groups");
         ctx.terminateSession();
         infoUtils.resetDoubleCheck();
     }
 
+    /**
+     * Test verify a live cycle of deployment operation in singleton mode with Aesh commands.
+     * <ul>
+     * <li>Step 1) Deploy applications deployments to defined server groups</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if applications deployments are enabled for defined server groups by info command</li>
+     * <li>Step 3a) Disabling two selected applications deployments</li>
+     * <li>Step 3b) Try disabling application deployment in wrong server group space. expect command execution fail</li>
+     * <li>Step 4) Verify if two selected applications deployments are disabled, but other have still previous state</li>
+     * <li>Step 5) Disable all deployed applications deployments in all server groups</li>
+     * <li>Step 6) Check if all applications deployments is disabled in all server groups</li>
+     * <li>Step 7) Enable all applications deployments for all server groups</li>
+     * <li>Step 8) Verify if all applications deployments are enabled for all server groups</li>
+     * <li>Step 9) Undeploy one application deployment</li>
+     * <li>Step 10) Check if selected application deployment is removed, but others still exist with right state</li>
+     * <li>Step 11) Undeploy all applications deployments</li>
+     * <li>Step 12) Check if all applications deployments is gone</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeploymentLiveCycleWithServerGroups() throws Exception {
         // Step 1) Deploy applications deployments to defined server groups
@@ -154,6 +178,13 @@ public class DeployAllDomainTestCase {
             ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp2War.getName());
             fail("Disabling application deployment with wrong server group doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!",
+                    ex.getMessage(),
+                    allOf(containsString("WFLYCTL0216: Management resource"),
+                            containsString(sgOne),
+                            containsString(cliTestApp2War.getName()),
+                            containsString("not found")));
             // Verification wrong command execution fail - success
         }
 
@@ -169,17 +200,10 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
         // Step 5) Disable all deployed applications deployments in all server groups
-        // TODO Uncomment after fix WFCORE-3562
-//        ctx.handle("deployment disable-all --all-relevant-server-groups");
-
-        // TODO remove code after fix WFCORE-3562
-//        ctx.handle("deployment disable-all --server-groups=" + sgOne);
-//        ctx.handle("deployment disable-all --server-groups=" + sgTwo);
         ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
         ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getName());
         ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
         ctx.handle("deployment disable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
-        // #WFCORE-3562
 
         // Step 6) Check if all applications deployments is disabled in all server groups
         infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
@@ -192,26 +216,10 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
 
-        // Step 7) Enable one application deployment
-        // TODO Uncomment after fix WFCORE-3563
-//        ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
-
-        // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-//        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-//
-//        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        // #WFCORE-3563
-
-        // Step 9) Enable all applications deployments for all server groups
+        // Step 7) Enable all applications deployments for all server groups
         ctx.handle("deployment enable-all --all-server-groups");
 
-        // Step 10) Verify if all applications deployments are enabled for all server groups
+        // Step 8) Verify if all applications deployments are enabled for all server groups
         infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
@@ -222,9 +230,9 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
-        // Step 11) Undeploy one application deployment
+        // Step 9) Undeploy one application deployment
         ctx.handle("deployment undeploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
-        // Step 12) Check if selected application deployment is removed, but others still exist with right state
+        // Step 10) Check if selected application deployment is removed, but others still exist with right state
         infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
         infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
@@ -235,9 +243,9 @@ public class DeployAllDomainTestCase {
         infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
-        // Step 13) Undeploy all applications deployments
+        // Step 11) Undeploy all applications deployments
         ctx.handle("deployment undeploy * --all-relevant-server-groups");
-        // Step 14) Check if all applications deployments is gone
+        // Step 12) Check if all applications deployments is gone
         infoUtils.readDeploymentList();
         infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
         infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
@@ -245,6 +253,27 @@ public class DeployAllDomainTestCase {
         infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
     }
 
+    /**
+     * Test verify a live cycle of deployment operation in domain mode with Legacy commands.
+     * <ul>
+     * <li>Step 1) Deploy applications deployments to defined server groups</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if applications deployments are enabled for defined server groups by info command</li>
+     * <li>Step 3a) Disabling two selected applications deployments</li>
+     * <li>Step 3b) Try disabling application deployment in wrong server group space. expect command execution fail</li>
+     * <li>Step 4) Verify if two selected applications deployments are disabled, but other have still previous state</li>
+     * <li>Step 5) Disable all deployed applications deployments in all server groups</li>
+     * <li>Step 6) Check if all applications deployments is disabled in all server groups</li>
+     * <li>Step 7) Enable all applications deployments for all server groups</li>
+     * <li>Step 8) Verify if all applications deployments are enabled for all server groups</li>
+     * <li>Step 9) Undeploy one application deployment</li>
+     * <li>Step 10) Check if selected application deployment is removed, but others still exist with right state</li>
+     * <li>Step 11) Undeploy all applications deployments</li>
+     * <li>Step 12) Check if all applications deployments is gone</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeploymentLegacyLiveCycleWithServerGroups() throws Exception {
         // Step 1) Deploy applications deployments to defined server groups
@@ -279,6 +308,13 @@ public class DeployAllDomainTestCase {
             ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgOne);
             fail("Disabling application deployment with wrong server group doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!",
+                    ex.getMessage(),
+                    allOf(containsString("WFLYCTL0216: Management resource"),
+                            containsString(sgOne),
+                            containsString(cliTestApp2War.getName()),
+                            containsString("not found")));
             // Verification wrong command execution fail - success
         }
 
@@ -294,17 +330,10 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
         // Step 5) Disable all deployed applications deployments in all server groups
-        // TODO Uncomment after fix WFCORE-3562
-//        ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
-
-        // TODO remove code after fix WFCORE-3562
-//        ctx.handle("undeploy * --keep-content --server-groups=" + sgOne);
-//        ctx.handle("undeploy * --keep-content --server-groups=" + sgTwo);
         ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
         ctx.handle("undeploy " + cliTestAnotherWar.getName() + " --keep-content --server-groups=" + sgOne);
         ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
         ctx.handle("undeploy " + cliTestAppEar.getName() + " --keep-content --server-groups=" + sgTwo + ',' + sgOne);
-        // #WFCORE-3562
 
         // Step 6) Check if all applications deployments is disabled in all server groups
         infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
@@ -317,26 +346,10 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
 
-        // Step 7) Enable one application deployment
-        // TODO Uncomment after fix WFCORE-3563
-//        ctx.handle("deploy --name=" + cliTestAppEar.getName() + " --server-groups=" + sgTwo + ',' + sgOne);
-
-        // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-//        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-//
-//        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-//        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        // #WFCORE-3563
-
-        // Step 9) Enable all applications deployments for all server groups
+        // Step 7) Enable all applications deployments for all server groups
         ctx.handle("deploy --name=* --server-groups=" + sgTwo + ',' + sgOne);
 
-        // Step 10) Verify if all applications deployments are enabled for all server groups
+        // Step 8) Verify if all applications deployments are enabled for all server groups
         infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
@@ -347,9 +360,9 @@ public class DeployAllDomainTestCase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
-        // Step 11) Undeploy one application deployment
+        // Step 9) Undeploy one application deployment
         ctx.handle("undeploy " + cliTestApp2War.getName() + " --server-groups=" + sgTwo);
-        // Step 12) Check if selected application deployment is removed, but others still exist with right state
+        // Step 10) Check if selected application deployment is removed, but others still exist with right state
         infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
         infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
@@ -360,9 +373,9 @@ public class DeployAllDomainTestCase {
         infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
         infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
 
-        // Step 13) Undeploy all applications deployments
+        // Step 11) Undeploy all applications deployments
         ctx.handle("undeploy * --all-relevant-server-groups");
-        // Step 14) Check if all applications deployments is gone
+        // Step 12) Check if all applications deployments is gone
         infoUtils.readDeploymentList();
         infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
         infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
@@ -371,9 +384,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3562 by Aesh command
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for disabling all deployments with all group by Aesh commands.
      */
-    @Ignore
+    @Ignore("WFCORE-3562")
     @Test
     public void testDisableAllAppDeploymentAllGroup() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups
@@ -402,9 +416,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3562 by Aesh command
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for disabling all deployments with separates group by Aesh commands.
      */
-    @Ignore
+    @Ignore("WFCORE-3562")
     @Test
     public void testDisableAllAppDeployment() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups
@@ -417,11 +432,24 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
         ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
 
-        // Step 3) Disable all deployed applications deployments in all server groups
+        // Step 3) Disable all deployed applications deployments in first server groups
         ctx.handle("deployment disable-all --server-groups=" + sgOne);
+
+        // Step 4) Check if all applications deployments is disabled in first server groups
+        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+
+        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+
+        // Step 5) Disable all deployed applications deployments in seconds server group
         ctx.handle("deployment disable-all --server-groups=" + sgTwo);
 
-        // Step 4) Check if all applications deployments is disabled in all server groups
+        // Step 6) Check if all applications deployments is disabled in all server groups
         infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
@@ -434,9 +462,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3562 by Aesh command
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for enabling one application deployments with separates group by Aesh commands.
      */
-    @Ignore
+    @Ignore("WFCORE-3562")
     @Test
     public void testEnableSingleAppDeployment() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups
@@ -471,9 +500,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3562 by Legacy command
+     * Separate test for check status of issue WFCORE-3562 by Legacy command.
+     * Concentration is for disable wildcard selecting all applications deployments with all server group by Legacy command.
      */
-    @Ignore
+    @Ignore("WFCORE-3562")
     @Test
     public void testLegacyDisableAllAppDeploymentAllGroup() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups
@@ -502,9 +532,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3562 by Legacy command
+     * Separate test for check status of issue WFCORE-3562 by Legacy command.
+     * Concentration is for disabling all deployments with separates group by Aesh commands.
      */
-    @Ignore
+    @Ignore("WFCORE-3562")
     @Test
     public void testLegacyDisableAllAppDeployment() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups
@@ -517,11 +548,24 @@ public class DeployAllDomainTestCase {
         ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
         ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
 
-        // Step 3) Disable all deployed applications deployments in all server groups
+        // Step 3) Disable all deployed applications deployments in first server groups
         ctx.handle("undeploy * --keep-content --server-groups=" + sgOne);
+
+        // Step 4) Check if all applications deployments is disabled in first server groups
+        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+
+        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+
+        // Step 5) Disable all deployed applications deployments in second server groups
         ctx.handle("undeploy * --keep-content --server-groups=" + sgTwo);
 
-        // Step 4) Check if all applications deployments is disabled in all server groups
+        // Step 6) Check if all applications deployments is disabled in all server groups
         infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
@@ -534,9 +578,10 @@ public class DeployAllDomainTestCase {
     }
 
     /**
-     * Test for check status of issue WFCORE-3563 by Legacy command
+     * Separate test for check status of issue WFCORE-3563 by Legacy command.
+     * Concentration is for enabling one application deployments with separates group by Legacy command.
      */
-    @Ignore
+    @Ignore("WFCORE-3563")
     @Test
     public void testLegacyEnableSingleAppDeployment() throws CommandLineException, IOException {
         // Step 1) Deploy applications deployments to defined server groups

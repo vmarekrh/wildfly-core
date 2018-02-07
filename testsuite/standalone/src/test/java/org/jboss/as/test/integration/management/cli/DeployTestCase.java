@@ -28,6 +28,9 @@ import java.util.List;
 import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandContextFactory;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createCliArchive;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.STOPPED;
@@ -42,8 +45,8 @@ import org.junit.AfterClass;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.core.testrunner.WildflyTestRunner;
@@ -53,6 +56,9 @@ import org.wildfly.core.testrunner.WildflyTestRunner;
  */
 @RunWith(WildflyTestRunner.class)
 public class DeployTestCase {
+
+    private static final String WRONG_PATH_PART = "216561-d.war";
+    private static final String WRONG_DEPLOYMENT = "testRo.war";
 
     private static File cliTestApp1War;
     private static File cliTestApp2War;
@@ -102,6 +108,28 @@ public class DeployTestCase {
         }
     }
 
+    /**
+     * Test verify a live cycle of deployment operation in singleton mode.
+     * <ul>
+     * <li>Step 1) Deploy applications deployments</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if applications deployments are enabled by info command</li>
+     * <li>Step 3) Disabling selected application deployment</li>
+     * <li>Step 4) Verify if selected application deployment is disabled, but other have still previous state</li>
+     * <li>Step 5) Disable all deployed applications deployments</li>
+     * <li>Step 6) Check if all applications deployments is disabled</li>
+     * <li>Step 7) Enable selected application deployment</li>
+     * <li>Step 8) Verify if selected application deployment are enabled, but other have still previous state</li>
+     * <li>Step 9) Enable all applications deployments</li>
+     * <li>Step 10) Verify if all applications deployments are enabled</li>
+     * <li>Step 11) Undeploy one application deployment</li>
+     * <li>Step 12) Check if selected application deployment is removed, but others still exist with right state</li>
+     * <li>Step 13) Undeploy all applications deployments</li>
+     * <li>Step 14) Check if all applications deployments is gone</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeploymentLiveCycle() throws Exception {
         // Step 1) Deploy applications deployments
@@ -119,7 +147,7 @@ public class DeployTestCase {
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
 
-        // Step 3a) Disabling selected application deployment
+        // Step 3) Disabling selected application deployment
         ctx.handle("deployment disable " + cliTestApp1War.getName());
 
         // Step 4) Verify if selected application deployment is disabled, but other have still previous state
@@ -196,6 +224,20 @@ public class DeployTestCase {
         }
     }
 
+    /**
+     * Testing re-deploy of application deployment.
+     * Using backward compatibility commands.
+     * <ul>
+     * <li>Step 1) Prepare application deployment archive</li>
+     * <li>Step 2) Deploy application deployment</li>
+     * <li>Step 3) Verify if application deployment is deployed and enabled by info command</li>
+     * <li>Step 4) Delete previous application deployment archive and create new for redeploy</li>
+     * <li>Step 5) Try redeploy application deployment</li>
+     * <li>Step 6) Verify if application deployment is deployed and enabled by info command</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testLegacyRedeployFileDeployment() throws Exception {
         // Step 1) Prepare application deployment archive
@@ -219,6 +261,19 @@ public class DeployTestCase {
         // TODO read page.html and check content
     }
 
+    /**
+     * Testing re-deploy of application deployment.
+     * <ul>
+     * <li>Step 1) Prepare application deployment archive</li>
+     * <li>Step 2) Deploy application deployment</li>
+     * <li>Step 3) Verify if application deployment is deployed and enabled by info command</li>
+     * <li>Step 4) Delete previous application deployment archive and create new for redeploy</li>
+     * <li>Step 5) Try redeploy application deployment</li>
+     * <li>Step 6) Verify if application deployment is deployed and enabled by info command</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testRedeployFileDeployment() throws Exception {
         // Step 1) Prepare application deployment archive
@@ -242,48 +297,70 @@ public class DeployTestCase {
         // TODO read page.html and check content
     }
 
+    /**
+     * Deploy one application deployment via cli archive.
+     * Using backward compatibility commands.
+     *
+     * @throws Exception
+     */
     @Test
     public void testLegacyDeployUndeployViaCliArchive() throws Exception {
-        /*
-        Deploy one application deployment via cli archive
-        Using backward compatibility commands
-         */
         tempCliTestAppWar = createCliArchive();
         ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
     }
 
+    /**
+     * Deploy one application deployment via cli archive
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeployUndeployViaCliArchive() throws Exception {
-        /*
-        Deploy one application deployment via cli archive
-         */
         tempCliTestAppWar = createCliArchive();
         ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getAbsolutePath());
     }
 
+    /**
+     * Deploy one application deployment via cli archive.
+     * Operation is limited by 2 second only.
+     * Using backward compatibility commands.
+     *
+     * @throws Exception
+     */
     @Test
     public void testLegacyDeployUndeployViaCliArchiveWithTimeout() throws Exception {
-        /*
-        Operation is limited by 2000 second only // realy? 2000? set num_seconds        - set the timeout to a number of seconds.
-        Deploy one application deployment via cli archive
-        Using backward compatibility commands
-         */
         tempCliTestAppWar = createCliArchive();
-        ctx.handle("command-timeout set 2");
+        ctx.handle("command-timeout set 2"); // set num_seconds        - set the timeout to a number of seconds.
         ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
     }
 
+    /**
+     * Deploy one application deployment via cli archive.
+     * Operation is limited by 2 second only.
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeployUndeployViaCliArchiveWithTimeout() throws Exception {
-        /*
-        Operation is limited by 2000 second only // realy? 2000? set num_seconds        - set the timeout to a number of seconds.
-        Deploy one application deployment via cli archive
-         */
         tempCliTestAppWar = createCliArchive();
-        ctx.handle("command-timeout set 2");
+        ctx.handle("command-timeout set 2"); // Operation is limited by 2000 second only
         ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getAbsolutePath());
     }
 
+    /**
+     * Testing deploy disabled application deployments and try enable and disable again it.
+     * Using backward compatibility commands.
+     * <ul>
+     * <li>Step 1) Deploy disabled 3 applications deployments</li>
+     * <li>Step 2) Check if applications deployments is installed and disabled</li>
+     * <li>Step 3) Enable all applications deployments</li>
+     * <li>Step 4) Check if applications deployments is enabled</li>
+     * <li>Step 5) Disable all applications deployments</li>
+     * <li>Step 6) Check if applications deployments is disabled</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
     @Test
     public void testLegacyDisableEnableDeployments() throws Exception {
         // Step 1) Deploy disabled 3 applications deployments
@@ -292,7 +369,7 @@ public class DeployTestCase {
         ctx.handle("deploy --disabled " + cliTestApp2War.getAbsolutePath());
 
         // Step 2) Check if applications deployments is installed and disabled
-        infoUtils.checkDeploymentByLegacyInfo( cliTestApp1War.getName(), STOPPED);
+        infoUtils.checkDeploymentByLegacyInfo(cliTestApp1War.getName(), STOPPED);
         infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
 
@@ -313,6 +390,12 @@ public class DeployTestCase {
         infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
     }
 
+    /**
+     * Testing deploy via URL.
+     * Only tested by local file URL, testing via http/https can not rely on availability.
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeployViaUrl() throws Exception {
         // Deploy application deployment via url link
@@ -323,88 +406,167 @@ public class DeployTestCase {
         infoUtils.checkDeploymentByInfo(cliTestApp2War.getName(), OK);
     }
 
+    /**
+     * Testing deploy application deployments with wrong path.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @throws Exception
+     */
     @Test
-    public void testDeployFileWithWrongPath() {
-        final String EXPECTED_URL_ERROR_MESSAGE = "doesn't exist";
+    public void testDeployFileWithWrongPath() throws Exception {
+        // Remember status of application deployment before deploy operation
+        final String before = infoUtils.readDeploymentInfo();
+
         // Try deploy application deployments with wrong path
         try {
-            ctx.handle("deployment deploy-file " + cliTestApp2War.getPath() + "89.war");
+            ctx.handle("deployment deploy-file " + cliTestApp2War.getPath() + WRONG_PATH_PART);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_URL_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_URL_ERROR_MESSAGE));
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Path " + cliTestApp2War.getPath() + WRONG_PATH_PART + " doesn't exist."));
             // Verification wrong command execution fail - success
+        }
+
+        // Verify if is application deployment status hasn't change
+        final String after = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After deploying wrong path of application deployment something is deployed.",
+                    after, is(before));
         }
     }
 
+    /**
+     * Testing deploy application deployments with wrong url.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @throws Exception
+     */
     @Test
     public void testDeployWithWrongUrl() throws Exception {
-        final String EXPECTED_URL_ERROR_MESSAGE = "Cannot create input stream from URL";
-        // Use local file url
-        ctx.handle("deployment deploy-url " + cliTestApp2War.toURI());
+        // Remember status of application deployment before deploy operation
+        final String before = infoUtils.readDeploymentInfo();
 
-        infoUtils.checkDeploymentByInfo(cliTestApp2War.getName(), OK);
+        // Use local file url
         try {
-            ctx.handle("deployment deploy-url " + cliTestApp2War.toURI() + "89.war");
+            ctx.handle("deployment deploy-url " + cliTestApp2War.toURI() + WRONG_PATH_PART);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_URL_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_URL_ERROR_MESSAGE));
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("WFLYSRV0150: Cannot create input stream from URL '" +
+                            cliTestApp2War.toURI() + WRONG_PATH_PART + "'"));
             // Verification wrong command execution fail - success
+        }
+
+        // Verify if is application deployment status hasn't change
+        final String after = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After deploying wrong url of application deployment something is deployed.",
+                    after, is(before));
         }
     }
 
+    /**
+     * Try deploy cli archive with wrong path and wrong cli command.
+     * Verify if status of application deployments hasn't change.
+     * Verify error messages.
+     *
+     * @throws Exception
+     */
     @Test
-    public void testDeployWithWrongCli() {
-        final String EXPECTED_CLI_ERROR_MESSAGE_WRONG_PATH = "doesn't exist";
-        final String EXPECTED_CLI_ERROR_MESSAGE_WRONG_ARCHIVE = "Unrecognized arguments";
+    public void testDeployWithWrongCli() throws Exception {
+        final String wrongArgument = "--fddhgfhtsdgr";
+        // Remember status of application deployment before deploy operation
+        final String before = infoUtils.readDeploymentInfo();
 
-        tempCliTestAppWar = createCliArchive("ls -fsdg sgsfgfd ghf d");
-        // Try deploy application deployments with wrong path
+        // Try deploy cli archive with wrong path
+        tempCliTestAppWar = createCliArchive("ls "+ wrongArgument +" sgsfgfd ghf d");
         try {
-            ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getPath() + "216561.war");
+            ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getPath() + WRONG_PATH_PART);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_CLI_ERROR_MESSAGE_WRONG_PATH, ex.getMessage().contains(EXPECTED_CLI_ERROR_MESSAGE_WRONG_PATH));
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Path " + tempCliTestAppWar.getPath() + WRONG_PATH_PART + " doesn't exist."));
             // Verification wrong command execution fail - success
         }
-        // Try deploy application deployments with wrong cli command in archive
+
+        // Verify if is application deployment status hasn't change
+        final String after = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After deploying wrong path of cli archive something is deployed.",
+                    after, is(before));
+        }
+
+        // Try deploy cli archive with wrong cli command in archive
         try {
             ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getPath());
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_CLI_ERROR_MESSAGE_WRONG_ARCHIVE, ex.getMessage().contains(EXPECTED_CLI_ERROR_MESSAGE_WRONG_ARCHIVE));
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Unrecognized arguments: [" + wrongArgument + "]"));
             // Verification wrong command execution fail - success
+        }
+
+        // Verify if is application deployment status hasn't change
+        final String after1 = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After deploying wrong cli archive something is deployed.",
+                    after1, is(before));
         }
     }
 
+    /**
+     * Testing disabling of non-deployed application deployments.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @throws Exception
+     */
+    @Ignore("WFCORE-3566")
     @Test
-    public void testDisableWrongDeployment() {
-        final String EXPECTED_ERROR_MESSAGE = "WFCORE-3566";
+    public void testDisableWrongDeployment() throws Exception {
+        // Remember status of application deployment before deploy operation
+        final String before = infoUtils.readDeploymentInfo();
 
         // Try disable non installed application deployment
         try {
-            ctx.handle("deployment disable testRo.war");
+            ctx.handle("deployment disable " + WRONG_DEPLOYMENT);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            // TODO Uncomment after fix WFCORE-3566
-//            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-//                    + EXPECTED_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_ERROR_MESSAGE));
-            // #WFCORE-3566
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("WFCORE-3566: '" + WRONG_DEPLOYMENT +
+                            "' is not found among the registered deployments."));
             // Verification wrong command execution fail - success
+        }
+        // Verify if is application deployment status hasn't change
+        final String after = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After disabling of non-deployed application deployment something is change.",
+                    after, is(before));
         }
     }
 
+    /**
+     * Testing of disabling already disabled application deployment.
+     * Verify error message.
+     * <ul>
+     * <li>Step 1) Deploy disabled application deployment</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if application deployment is disabled by info command</li>
+     * <li>Step 3) Try disable already disabled application deployment</li>
+     * </ul>
+     *
+     * @throws Exception
+     */
+    @Ignore("WFCORE-3566")
     @Test
     public void testDisableAlreadyDisabledDeployment() throws Exception {
-        final String EXPECTED_ERROR_MESSAGE = "WFCORE-3566";
         // Step 1) Deploy disabled application deployment
         ctx.handle("deployment deploy-file --disabled " + cliTestAnotherWar.getAbsolutePath());
 
@@ -414,33 +576,47 @@ public class DeployTestCase {
         // Step 2b) Verify if application deployment is disabled by info command
         infoUtils.checkDeploymentByInfo(cliTestAnotherWar.getName(), STOPPED);
 
-        // Step 3a) Try disable already disabled application deployment
+        // Step 3) Try disable already disabled application deployment
         try {
             ctx.handle("deployment disable " + cliTestAnotherWar.getName());
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            // TODO Uncomment after fix WFCORE-3566
-//            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-//                    + EXPECTED_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_ERROR_MESSAGE));
-            // #WFCORE-3566
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("WFCORE-3566: '" + cliTestAnotherWar.getName() + "' is already disabled."));
             // Verification wrong command execution fail - success
         }
     }
 
+    /**
+     * Testing of enabling non-deployed application deployment.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @throws Exception
+     */
     @Test
-    public void testEnableWrongDeployments() {
-        final String EXPECTED_ERROR_MESSAGE = "is not found among the registered deployments";
+    public void testEnableWrongDeployments() throws Exception {
+        // Remember status of application deployment before deploy operation
+        final String before = infoUtils.readDeploymentInfo();
 
         // Try enable non installed application deployment
         try {
-            ctx.handle("deployment enable testRo.war");
+            ctx.handle("deployment enable " + WRONG_DEPLOYMENT);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_ERROR_MESSAGE));
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("'" + WRONG_DEPLOYMENT +
+                            "' is not found among the registered deployments."));
             // Verification wrong command execution fail - success
+        }
+
+        // Verify if is application deployment status hasn't change
+        final String after = infoUtils.readDeploymentInfo();
+        if (!infoUtils.isOutputEmpty()) {
+            assertThat("After enable of non-deployed application deployment something is change.",
+                    after, is(before));
         }
     }
 }

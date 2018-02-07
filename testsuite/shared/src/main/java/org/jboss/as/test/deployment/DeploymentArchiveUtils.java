@@ -31,7 +31,6 @@ import java.io.File;
  * Tool for creating WAR and EAR archive to testing of deploy applications deployments functionality
  *
  * @author Vratislav Marek (vmarek@redhat.com)
- * @since 30.1.18 13:00
  **/
 public class DeploymentArchiveUtils {
 

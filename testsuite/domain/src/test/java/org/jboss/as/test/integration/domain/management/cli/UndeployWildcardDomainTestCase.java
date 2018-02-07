@@ -21,11 +21,12 @@
  */
 package org.jboss.as.test.integration.domain.management.cli;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createEnterpriseArchive;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.NOT_ADDED;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -40,7 +41,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -49,7 +49,7 @@ import org.junit.Test;
  */
 public class UndeployWildcardDomainTestCase {
 
-    private static String EXPECTED_ERROR_MESSAGE = "No deployment matched wildcard expression mar";
+    private static String EXPECTED_ERROR_MESSAGE = "No deployment matched wildcard expression mar*";
 
     private static File cliTestApp1War;
     private static File cliTestApp2War;
@@ -131,8 +131,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy all deployed war archive
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy all deployed war archive.
      *
      * @throws Exception
      */
@@ -156,8 +156,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'.
      *
      * @throws Exception
      */
@@ -181,8 +181,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy all deployed application deployments with prefix '*test-a*'
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy all deployed application deployments with prefix '*test-a*'.
      *
      * @throws Exception
      */
@@ -206,8 +206,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy all deployed application deployments with filtering by '*test-a*.war'
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy all deployed application deployments with filtering by '*test-a*.war'.
      *
      * @throws Exception
      */
@@ -231,8 +231,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy all deployed war archive
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy all deployed war archive.
      *
      * @throws Exception
      */
@@ -256,8 +256,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy all deployed application deployments with filtering by prefix 'cli-test-app'.
      *
      * @throws Exception
      */
@@ -281,8 +281,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy all deployed application deployments with prefix '*test-ap*'
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy all deployed application deployments with prefix '*test-ap*'.
      *
      * @throws Exception
      */
@@ -306,8 +306,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy all deployed application deployments with prefix '*test-a*'
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy all deployed application deployments with prefix '*test-a*'.
      *
      * @throws Exception
      */
@@ -331,8 +331,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy all deployed application deployments with prefix 'test-a'
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy all deployed application deployments with prefix 'test-a'.
      *
      * @throws Exception
      */
@@ -356,8 +356,8 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy all deployed application deployments with filtering by '*test-a*.war'
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy all deployed application deployments with filtering by '*test-a*.war'.
      *
      * @throws Exception
      */
@@ -381,8 +381,9 @@ public class UndeployWildcardDomainTestCase {
     }
 
     /**
-     * Test undeploying with all relevant server groups using backward compatibility commands
-     * Undeploy no one deployed application deployments with filtering by 'mar*'
+     * Test undeploying with all relevant server groups using backward compatibility commands.
+     * Undeploy no one deployed application deployments with filtering by 'mar*'.
+     * Check change of applications deployments states.
      *
      * @throws Exception
      */
@@ -394,15 +395,31 @@ public class UndeployWildcardDomainTestCase {
             fail("Undeploying application deployment with wrong wildcard doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_ERROR_MESSAGE));
+            assertThat("Error message doesn't contains expected message information!",
+                    ex.getMessage(), containsString(EXPECTED_ERROR_MESSAGE));
             // Verification wrong command execution fail - success
         }
+
+        // Check if nothing change
+        infoUtils.readDeploymentInfo(sgOne);
+        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+
+        infoUtils.readDeploymentInfo(sgTwo);
+        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
     }
 
     /**
-     * Test undeploying with all relevant server groups using Aesh commands
-     * Undeploy no one deployed application deployments with filtering by 'mar*'
+     * Test undeploying with all relevant server groups using Aesh commands.
+     * Undeploy no one deployed application deployments with filtering by 'mar*'.
+     * Check change of applications deployments states.
      *
      * @throws Exception
      */
@@ -414,9 +431,24 @@ public class UndeployWildcardDomainTestCase {
             fail("Undeploying application deployment with wrong wildcard doesn't failed! Command execution fail is expected.");
         } catch (Exception ex) {
             // Check error message
-            assertTrue("Error message doesn't contains expected string! Expected string:\n"
-                    + EXPECTED_ERROR_MESSAGE, ex.getMessage().contains(EXPECTED_ERROR_MESSAGE));
+            assertThat("Error message doesn't contains expected message information!",
+                    ex.getMessage(), containsString(EXPECTED_ERROR_MESSAGE));
             // Verification wrong command execution fail - success
         }
+
+        // Check if nothing change
+        infoUtils.readDeploymentInfo(sgOne);
+        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+
+        infoUtils.readDeploymentInfo(sgTwo);
+        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
+        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
     }
 }
