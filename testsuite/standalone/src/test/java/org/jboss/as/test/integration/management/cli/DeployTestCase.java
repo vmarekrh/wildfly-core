@@ -37,11 +37,18 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.S
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.OK;
 
 import org.jboss.as.cli.impl.CommandContextConfiguration;
-import org.jboss.as.test.deployment.DeploymentInfoUtils;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
+import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.junit.After;
 import org.junit.AfterClass;
 
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkExist;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkMissing;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkVoid;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentInfo;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentList;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.legacyDeploymentInfo;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -55,7 +62,7 @@ import org.wildfly.core.testrunner.WildflyTestRunner;
  * @author jdenise@redhat.com
  */
 @RunWith(WildflyTestRunner.class)
-public class DeployTestCase {
+public class DeployTestCase extends AbstractCliTestBase{
 
     private static final String WRONG_PATH_PART = "216561-d.war";
     private static final String WRONG_DEPLOYMENT = "testRo.war";
@@ -64,8 +71,7 @@ public class DeployTestCase {
     private static File cliTestApp2War;
     private static File cliTestAnotherWar;
     private static File tempCliTestAppWar;
-
-    private static DeploymentInfoUtils infoUtils;
+    
     private static CommandContext ctx;
 
     @BeforeClass
@@ -76,9 +82,7 @@ public class DeployTestCase {
                         + ":" + TestSuiteEnvironment.getServerPort());
         ctx = CommandContextFactory.getInstance().newCommandContext(configBuilder.build());
         ctx.connectController();
-        infoUtils = new DeploymentInfoUtils(TestSuiteEnvironment.getServerAddress());
-        infoUtils.connectCli();
-        infoUtils.enableDoubleCheck(ctx);
+        AbstractCliTestBase.initCLI(TestSuiteEnvironment.getServerAddress());
 
         // deployment1
         cliTestApp1War = createWarArchive("cli-test-app1-deploy.war", "Version0");
@@ -93,7 +97,7 @@ public class DeployTestCase {
     @AfterClass
     public static void after() throws Exception {
         ctx.terminateSession();
-        infoUtils.disconnectCli();
+        AbstractCliTestBase.closeCLI();
 
         cliTestApp1War.delete();
         cliTestApp2War.delete();
@@ -138,63 +142,71 @@ public class DeployTestCase {
         ctx.handle("deployment deploy-file " + cliTestApp2War.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        infoUtils.checkDeploymentByList(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName());
+        CommandResult result = deploymentList(cli);
+        checkExist(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName());
+        checkExist(result, cliTestApp2War.getName());
 
         // Step 2b) Verify if applications deployments are enabled by info command
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), OK);
+        checkExist(result, cliTestAnotherWar.getName(), OK);
+        checkExist(result, cliTestApp2War.getName(), OK);
 
         // Step 3) Disabling selected application deployment
         ctx.handle("deployment disable " + cliTestApp1War.getName());
 
         // Step 4) Verify if selected application deployment is disabled, but other have still previous state
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), STOPPED);
+        checkExist(result, cliTestAnotherWar.getName(), OK);
+        checkExist(result, cliTestApp2War.getName(), OK);
 
         // Step 5) Disable all deployed applications deployments
         ctx.handle("deployment disable-all");
 
         // Step 6) Check if all applications deployments is disabled
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), STOPPED);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+        checkExist(result, cliTestApp2War.getName(), STOPPED);
 
         // Step 7) Enable selected application deployment
         ctx.handle("deployment enable " + cliTestApp2War.getName());
 
         // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), STOPPED);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+        checkExist(result, cliTestApp2War.getName(), OK);
 
         // Step 9) Enable all applications deployments
         ctx.handle("deployment enable-all");
 
         // Step 10) Verify if all applications deployments are enabled
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), OK);
+        checkExist(result, cliTestAnotherWar.getName(), OK);
+        checkExist(result, cliTestApp2War.getName(), OK);
 
         // Step 11) Undeploy one application deployment
         ctx.handle("deployment undeploy " + cliTestApp2War.getName());
 
         // Step 12) Check if selected application deployment is removed, but others still exist with right state
-        infoUtils.checkDeploymentByInfo(cliTestApp1War.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), OK);
+        checkExist(result, cliTestAnotherWar.getName(), OK);
+        checkMissing(result, cliTestApp2War.getName());
 
         // Step 13) Undeploy all applications deployments
         ctx.handle("deployment undeploy *");
 
         // Step 14) Check if all applications deployments is gone
-        infoUtils.readDeploymentList();
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
+        result = deploymentList(cli);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkVoid(result);
     }
 
     @Test
@@ -247,7 +259,8 @@ public class DeployTestCase {
         ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        infoUtils.checkDeploymentByLegacyInfo(tempCliTestAppWar.getName(), OK);
+        CommandResult result = legacyDeploymentInfo(cli);
+        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
         tempCliTestAppWar.delete();
@@ -257,7 +270,8 @@ public class DeployTestCase {
         ctx.handle("deploy --force " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 6) Verify if application deployment is deployed and enabled by info command
-        infoUtils.checkDeploymentByLegacyInfo(tempCliTestAppWar.getName(), OK);
+        result = legacyDeploymentInfo(cli);
+        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
         // TODO read page.html and check content
     }
 
@@ -283,7 +297,8 @@ public class DeployTestCase {
         ctx.handle("deployment deploy-file " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
+        CommandResult result = deploymentInfo(cli);
+        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
         tempCliTestAppWar.delete();
@@ -293,7 +308,8 @@ public class DeployTestCase {
         ctx.handle("deployment deploy-file --replace " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 6) Verify if application deployment is deployed and enabled by info command
-        infoUtils.checkDeploymentByInfo(tempCliTestAppWar.getName(), OK);
+        result = deploymentInfo(cli);
+        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
         // TODO read page.html and check content
     }
 
@@ -369,25 +385,28 @@ public class DeployTestCase {
         ctx.handle("deploy --disabled " + cliTestApp2War.getAbsolutePath());
 
         // Step 2) Check if applications deployments is installed and disabled
-        infoUtils.checkDeploymentByLegacyInfo(cliTestApp1War.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
+        CommandResult result = legacyDeploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), STOPPED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
+        checkExist(result, cliTestApp2War.getName(), STOPPED, ctx);
 
         // Step 3) Enable all applications deployments
         ctx.handle("deploy --name=*");
 
         // Step 4) Check if applications deployments is enabled
-        infoUtils.checkDeploymentByLegacyInfo(cliTestApp1War.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), OK);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), OK);
+        result = legacyDeploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), OK, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), OK, ctx);
+        checkExist(result, cliTestApp2War.getName(), OK, ctx);
 
         // Step 5) Disable all applications deployments
         ctx.handle("undeploy * --keep-content");
 
         // Step 6) Check if applications deployments is disabled
-        infoUtils.checkDeploymentByLegacyInfo(cliTestApp1War.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), STOPPED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), STOPPED);
+        result = legacyDeploymentInfo(cli);
+        checkExist(result, cliTestApp1War.getName(), STOPPED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
+        checkExist(result, cliTestApp2War.getName(), STOPPED, ctx);
     }
 
     /**
@@ -402,8 +421,10 @@ public class DeployTestCase {
         ctx.handle("deployment deploy-url " + cliTestApp2War.toURI());
 
         // Check if application deployments is installed
-        infoUtils.checkDeploymentByList(cliTestApp2War.getName());
-        infoUtils.checkDeploymentByInfo(cliTestApp2War.getName(), OK);
+        CommandResult result = deploymentList(cli);
+        checkExist(result, cliTestApp2War.getName(), ctx);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestApp2War.getName(), OK, ctx);
     }
 
     /**
@@ -416,7 +437,7 @@ public class DeployTestCase {
     @Test
     public void testDeployFileWithWrongPath() throws Exception {
         // Remember status of application deployment before deploy operation
-        final String before = infoUtils.readDeploymentInfo();
+        final CommandResult before = deploymentInfo(cli);
 
         // Try deploy application deployments with wrong path
         try {
@@ -430,8 +451,8 @@ public class DeployTestCase {
         }
 
         // Verify if is application deployment status hasn't change
-        final String after = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after = deploymentInfo(cli);
+        if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of application deployment something is deployed.",
                     after, is(before));
         }
@@ -447,7 +468,7 @@ public class DeployTestCase {
     @Test
     public void testDeployWithWrongUrl() throws Exception {
         // Remember status of application deployment before deploy operation
-        final String before = infoUtils.readDeploymentInfo();
+        final CommandResult before = deploymentInfo(cli);
 
         // Use local file url
         try {
@@ -462,8 +483,8 @@ public class DeployTestCase {
         }
 
         // Verify if is application deployment status hasn't change
-        final String after = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after = deploymentInfo(cli);
+        if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong url of application deployment something is deployed.",
                     after, is(before));
         }
@@ -480,7 +501,7 @@ public class DeployTestCase {
     public void testDeployWithWrongCli() throws Exception {
         final String wrongArgument = "--fddhgfhtsdgr";
         // Remember status of application deployment before deploy operation
-        final String before = infoUtils.readDeploymentInfo();
+        final CommandResult before = deploymentInfo(cli);
 
         // Try deploy cli archive with wrong path
         tempCliTestAppWar = createCliArchive("ls "+ wrongArgument +" sgsfgfd ghf d");
@@ -495,8 +516,8 @@ public class DeployTestCase {
         }
 
         // Verify if is application deployment status hasn't change
-        final String after = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after = deploymentInfo(cli);
+        if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of cli archive something is deployed.",
                     after, is(before));
         }
@@ -513,8 +534,8 @@ public class DeployTestCase {
         }
 
         // Verify if is application deployment status hasn't change
-        final String after1 = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after1 = deploymentInfo(cli);
+        if (!after1.isOutputEmpty()) {
             assertThat("After deploying wrong cli archive something is deployed.",
                     after1, is(before));
         }
@@ -531,7 +552,7 @@ public class DeployTestCase {
     @Test
     public void testDisableWrongDeployment() throws Exception {
         // Remember status of application deployment before deploy operation
-        final String before = infoUtils.readDeploymentInfo();
+        final CommandResult before = deploymentInfo(cli);
 
         // Try disable non installed application deployment
         try {
@@ -545,8 +566,8 @@ public class DeployTestCase {
             // Verification wrong command execution fail - success
         }
         // Verify if is application deployment status hasn't change
-        final String after = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after = deploymentInfo(cli);
+        if (!after.isOutputEmpty()) {
             assertThat("After disabling of non-deployed application deployment something is change.",
                     after, is(before));
         }
@@ -571,10 +592,12 @@ public class DeployTestCase {
         ctx.handle("deployment deploy-file --disabled " + cliTestAnotherWar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        infoUtils.checkDeploymentByList(cliTestAnotherWar.getName());
+        CommandResult result = deploymentList(cli);
+        checkExist(result, cliTestAnotherWar.getName(), ctx);
 
         // Step 2b) Verify if application deployment is disabled by info command
-        infoUtils.checkDeploymentByInfo(cliTestAnotherWar.getName(), STOPPED);
+        result = deploymentInfo(cli);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
 
         // Step 3) Try disable already disabled application deployment
         try {
@@ -598,7 +621,7 @@ public class DeployTestCase {
     @Test
     public void testEnableWrongDeployments() throws Exception {
         // Remember status of application deployment before deploy operation
-        final String before = infoUtils.readDeploymentInfo();
+        final CommandResult before = deploymentInfo(cli);
 
         // Try enable non installed application deployment
         try {
@@ -613,8 +636,8 @@ public class DeployTestCase {
         }
 
         // Verify if is application deployment status hasn't change
-        final String after = infoUtils.readDeploymentInfo();
-        if (!infoUtils.isOutputEmpty()) {
+        final CommandResult after = deploymentInfo(cli);
+        if (!after.isOutputEmpty()) {
             assertThat("After enable of non-deployed application deployment something is change.",
                     after, is(before));
         }

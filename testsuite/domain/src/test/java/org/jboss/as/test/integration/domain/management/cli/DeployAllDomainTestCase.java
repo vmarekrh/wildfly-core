@@ -29,8 +29,10 @@ import org.jboss.as.cli.CommandContext;
 
 import org.jboss.as.cli.CommandLineException;
 import org.jboss.as.test.deployment.DeploymentInfoUtils;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
+import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.CLITestUtil;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -42,6 +44,12 @@ import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createEnterpri
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.NOT_ADDED;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkExist;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkMissing;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkVoid;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentInfo;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentList;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.legacyDeploymentInfo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -53,7 +61,7 @@ import org.junit.Test;
 /**
  * @author jdenise@redhat.com
  */
-public class DeployAllDomainTestCase {
+public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
     protected static File cliTestApp1War;
     protected static File cliTestApp2War;
@@ -65,13 +73,11 @@ public class DeployAllDomainTestCase {
 
     protected static CommandContext ctx;
     protected static DomainTestSupport testSupport;
-    protected static DeploymentInfoUtils infoUtils;
 
     @BeforeClass
     public static void before() throws Exception {
         testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
-        infoUtils = new DeploymentInfoUtils(DomainTestSupport.masterAddress);
-        infoUtils.connectCli();
+        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
 
         // deployment1
         cliTestApp1War = createCliArchive("cli-test-app1-deploy-all.war", "Version0");
@@ -101,7 +107,7 @@ public class DeployAllDomainTestCase {
         ctx.handleSafe("deployment undeploy * --all-relevant-server-groups");
 
         CLITestSuite.stopSupport();
-        infoUtils.disconnectCli();
+        AbstractCliTestBase.closeCLI();
 
         cliTestApp1War.delete();
         cliTestApp2War.delete();
@@ -113,14 +119,12 @@ public class DeployAllDomainTestCase {
     public void beforeTest() throws Exception {
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
-        infoUtils.enableDoubleCheck(ctx);
     }
 
     @After
     public void afterTest() {
         ctx.handleSafe("deployment undeploy * --all-relevant-server-groups");
         ctx.terminateSession();
-        infoUtils.resetDoubleCheck();
     }
 
     /**
@@ -153,21 +157,24 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        infoUtils.checkDeploymentByList(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName());
+        CommandResult result = deploymentList(cli);
+        checkExist(result, cliTestApp1War.getName());
+        checkExist(result, cliTestAnotherWar.getName());
+        checkExist(result, cliTestApp2War.getName());
+        checkExist(result, cliTestAppEar.getName());
 
         // Step 2b) Verify if applications deployments are enabled for defined server groups by info command
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 3a) Disabling two selected applications deployments
         ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
@@ -189,15 +196,17 @@ public class DeployAllDomainTestCase {
         }
 
         // Step 4) Verify if two selected applications deployments are disabled, but other have still previous state
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 5) Disable all deployed applications deployments in all server groups
         ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
@@ -206,51 +215,58 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment disable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
 
         // Step 6) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
         // Step 7) Enable all applications deployments for all server groups
         ctx.handle("deployment enable-all --all-server-groups");
 
         // Step 8) Verify if all applications deployments are enabled for all server groups
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 9) Undeploy one application deployment
         ctx.handle("deployment undeploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
         // Step 10) Check if selected application deployment is removed, but others still exist with right state
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 11) Undeploy all applications deployments
         ctx.handle("deployment undeploy * --all-relevant-server-groups");
         // Step 12) Check if all applications deployments is gone
-        infoUtils.readDeploymentList();
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
+        result = deploymentList(cli);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkVoid(result);
     }
 
     /**
@@ -283,21 +299,24 @@ public class DeployAllDomainTestCase {
         ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        infoUtils.checkDeploymentByList(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName());
+        CommandResult result = deploymentList(cli);
+        checkExist(result, cliTestApp1War.getName());
+        checkExist(result, cliTestAnotherWar.getName());
+        checkExist(result, cliTestApp2War.getName());
+        checkExist(result, cliTestAppEar.getName());
 
         // Step 2b) Verify if applications deployments are enabled for defined server groups by info command
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 3a) Disabling two selected applications deployments
         ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
@@ -319,15 +338,17 @@ public class DeployAllDomainTestCase {
         }
 
         // Step 4) Verify if two selected applications deployments are disabled, but other have still previous state
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 5) Disable all deployed applications deployments in all server groups
         ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
@@ -336,51 +357,58 @@ public class DeployAllDomainTestCase {
         ctx.handle("undeploy " + cliTestAppEar.getName() + " --keep-content --server-groups=" + sgTwo + ',' + sgOne);
 
         // Step 6) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
         // Step 7) Enable all applications deployments for all server groups
         ctx.handle("deploy --name=* --server-groups=" + sgTwo + ',' + sgOne);
 
         // Step 8) Verify if all applications deployments are enabled for all server groups
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 9) Undeploy one application deployment
         ctx.handle("undeploy " + cliTestApp2War.getName() + " --server-groups=" + sgTwo);
         // Step 10) Check if selected application deployment is removed, but others still exist with right state
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 11) Undeploy all applications deployments
         ctx.handle("undeploy * --all-relevant-server-groups");
         // Step 12) Check if all applications deployments is gone
-        infoUtils.readDeploymentList();
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
+        result = deploymentList(cli);
+        checkMissing(result, cliTestApp1War.getName());
+        checkMissing(result, cliTestAnotherWar.getName());
+        checkMissing(result, cliTestApp2War.getName());
+        checkMissing(result, cliTestAppEar.getName());
+        checkVoid(result);
     }
 
     /**
@@ -404,15 +432,17 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment disable-all --all-relevant-server-groups");
 
         // Step 4) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
     }
 
     /**
@@ -436,29 +466,33 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment disable-all --server-groups=" + sgOne);
 
         // Step 4) Check if all applications deployments is disabled in first server groups
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 5) Disable all deployed applications deployments in seconds server group
         ctx.handle("deployment disable-all --server-groups=" + sgTwo);
 
         // Step 6) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
     }
 
     /**
@@ -488,15 +522,17 @@ public class DeployAllDomainTestCase {
         ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
 
         // Step 5) Verify if selected application deployment are enabled, but other have still previous state
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
     }
 
     /**
@@ -520,15 +556,17 @@ public class DeployAllDomainTestCase {
         ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
 
         // Step 4) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
     }
 
     /**
@@ -552,29 +590,33 @@ public class DeployAllDomainTestCase {
         ctx.handle("undeploy * --keep-content --server-groups=" + sgOne);
 
         // Step 4) Check if all applications deployments is disabled in first server groups
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
         // Step 5) Disable all deployed applications deployments in second server groups
         ctx.handle("undeploy * --keep-content --server-groups=" + sgTwo);
 
         // Step 6) Check if all applications deployments is disabled in all server groups
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ADDED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
     }
 
     /**
@@ -604,14 +646,16 @@ public class DeployAllDomainTestCase {
         ctx.handle("deploy --name=" + cliTestAppEar.getName() + " --server-groups=" + sgTwo + ',' + sgOne);
 
         // Step 5) Verify if selected application deployment are enabled, but other have still previous state
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
 
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
     }
 }

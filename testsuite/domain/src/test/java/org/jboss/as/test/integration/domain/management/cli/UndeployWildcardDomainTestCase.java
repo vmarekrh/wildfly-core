@@ -26,6 +26,10 @@ import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createEnterpri
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.NOT_ADDED;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkExist;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkMissing;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentInfo;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.legacyDeploymentInfo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -34,8 +38,10 @@ import java.util.Iterator;
 
 import org.jboss.as.cli.CommandContext;
 import org.jboss.as.test.deployment.DeploymentInfoUtils;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
+import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.CLITestUtil;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -47,7 +53,7 @@ import org.junit.Test;
 /**
  * @author Alexey Loubyansky
  */
-public class UndeployWildcardDomainTestCase {
+public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
 
     private static String EXPECTED_ERROR_MESSAGE = "No deployment matched wildcard expression mar*";
 
@@ -62,13 +68,11 @@ public class UndeployWildcardDomainTestCase {
 
     private CommandContext ctx;
     private static DomainTestSupport testSupport;
-    private static DeploymentInfoUtils infoUtils;
 
     @BeforeClass
     public static void before() throws Exception {
         testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
-        infoUtils = new DeploymentInfoUtils(DomainTestSupport.masterAddress);
-        infoUtils.connectCli();
+        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
 
         // deployment1
         cliTestApp1War = createWarArchive("cli-test-app1.war", "Version0");
@@ -99,7 +103,7 @@ public class UndeployWildcardDomainTestCase {
     @AfterClass
     public static void after() throws Exception {
         CLITestSuite.stopSupport();
-        infoUtils.disconnectCli();
+        AbstractCliTestBase.closeCLI();
 
         cliTestApp1War.delete();
         cliTestApp2War.delete();
@@ -111,7 +115,6 @@ public class UndeployWildcardDomainTestCase {
     public void beforeTest() throws Exception {
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
-        infoUtils.enableDoubleCheck(ctx);
 
         ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
         ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
@@ -127,7 +130,6 @@ public class UndeployWildcardDomainTestCase {
         ctx.handleSafe("deployment undeploy * --all-relevant-server-groups");
 
         ctx.terminateSession();
-        infoUtils.resetDoubleCheck();
     }
 
     /**
@@ -140,19 +142,19 @@ public class UndeployWildcardDomainTestCase {
     public void testUndeployAllWars() throws Exception {
         ctx.handle("deployment undeploy *.war --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -165,19 +167,19 @@ public class UndeployWildcardDomainTestCase {
     public void testUndeployCliTestApps() throws Exception {
         ctx.handle("deployment undeploy cli-test-app* --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -190,19 +192,19 @@ public class UndeployWildcardDomainTestCase {
     public void testUndeployTestAs() throws Exception {
         ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -215,19 +217,19 @@ public class UndeployWildcardDomainTestCase {
     public void testUndeployTestAWARs() throws Exception {
         ctx.handle("deployment undeploy *test-a*.war --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -240,19 +242,19 @@ public class UndeployWildcardDomainTestCase {
     public void testLegacyUndeployAllWars() throws Exception {
         ctx.handle("undeploy *.war --all-relevant-server-groups");
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -265,19 +267,19 @@ public class UndeployWildcardDomainTestCase {
     public void testLegacyUndeployCliTestApps() throws Exception {
         ctx.handle("undeploy cli-test-app* --all-relevant-server-groups");
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -290,19 +292,19 @@ public class UndeployWildcardDomainTestCase {
     public void testLegacyUndeployTestAps() throws Exception {
         ctx.handle("undeploy *test-ap* --all-relevant-server-groups");
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -315,19 +317,19 @@ public class UndeployWildcardDomainTestCase {
     public void testLegacyUndeployTestAs() throws Exception {
         ctx.handle("undeploy *test-a* --all-relevant-server-groups");
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -340,19 +342,19 @@ public class UndeployWildcardDomainTestCase {
     public void testUndeployTestAps() throws Exception {
         ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -365,19 +367,19 @@ public class UndeployWildcardDomainTestCase {
     public void testLegacyUndeployTestAWARs() throws Exception {
         ctx.handle("undeploy *test-a*.war --all-relevant-server-groups");
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAnotherWar.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestApp2War.getName());
-        infoUtils.checkMissingInOutputMemory(cliTestAppEar.getName());
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName(), ctx);
+        checkMissing(result, cliTestAnotherWar.getName(), ctx);
+        checkMissing(result, cliTestApp2War.getName(), ctx);
+        checkMissing(result, cliTestAppEar.getName(), ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -401,19 +403,19 @@ public class UndeployWildcardDomainTestCase {
         }
 
         // Check if nothing change
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 
     /**
@@ -437,18 +439,18 @@ public class UndeployWildcardDomainTestCase {
         }
 
         // Check if nothing change
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), NOT_ADDED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), NOT_ADDED, ctx);
 
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkExistInOutputMemory(cliTestApp1War.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestAnotherWar.getName(), NOT_ADDED);
-        infoUtils.checkExistInOutputMemory(cliTestApp2War.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(cliTestAppEar.getName(), ENABLED);
-        infoUtils.checkExistInOutputMemory(diffCliPersistentTestWars.getName(), ENABLED);
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ENABLED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+        checkExist(result, diffCliPersistentTestWars.getName(), ENABLED, ctx);
     }
 }

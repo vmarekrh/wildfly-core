@@ -27,8 +27,10 @@ import java.util.Iterator;
 import org.jboss.as.cli.CommandContext;
 
 import org.jboss.as.test.deployment.DeploymentInfoUtils;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
+import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.CLITestUtil;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -36,13 +38,18 @@ import org.junit.AfterClass;
 import static org.jboss.as.test.deployment.DeploymentArchiveUtils.createWarArchive;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ADDED;
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.ENABLED;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkExist;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkMissing;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.checkVoid;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.deploymentInfo;
+import static org.jboss.as.test.deployment.DeploymentInfoUtils.legacyDeploymentInfo;
 import static org.junit.Assert.fail;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class UndeployTestCase {
+public class UndeployTestCase extends AbstractCliTestBase {
 
     private static File cliTestApp1War;
 
@@ -51,13 +58,11 @@ public class UndeployTestCase {
 
     private CommandContext ctx;
     private static DomainTestSupport testSupport;
-    private static DeploymentInfoUtils infoUtils;
 
     @BeforeClass
     public static void before() throws Exception {
         testSupport = CLITestSuite.createSupport(UndeployTestCase.class.getSimpleName());
-        infoUtils = new DeploymentInfoUtils(DomainTestSupport.masterAddress);
-        infoUtils.connectCli();
+        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
 
         // deployment1
         cliTestApp1War = createWarArchive("cli-undeploy-test-app1.war", "Version0");
@@ -76,7 +81,7 @@ public class UndeployTestCase {
     @AfterClass
     public static void after() throws Exception {
         CLITestSuite.stopSupport();
-        infoUtils.disconnectCli();
+        AbstractCliTestBase.closeCLI();
 
         cliTestApp1War.delete();
     }
@@ -85,7 +90,6 @@ public class UndeployTestCase {
     public void beforeTest() throws Exception {
         ctx = CLITestUtil.getCommandContext(testSupport);
         ctx.connectController();
-        infoUtils.enableDoubleCheck(ctx);
     }
 
     @After
@@ -93,7 +97,6 @@ public class UndeployTestCase {
         ctx.handleSafe("deployment undeploy * --all-relevant-server-groups");
 
         ctx.terminateSession();
-        infoUtils.resetDoubleCheck();
     }
 
     /**
@@ -106,21 +109,27 @@ public class UndeployTestCase {
     public void testLegacyUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deploy --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());
 
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), ENABLED);
+        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
 
         // From serverGroup1 only, still referenced from sg2. Must keep-content
         ctx.handle("undeploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
 
-        infoUtils.checkDeploymentByLegacyInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkDeploymentByLegacyInfo(sgTwo, cliTestApp1War.getName(), ENABLED);
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
 
         ctx.handle("undeploy --name=* --server-groups=" + sgOne + ',' + sgTwo);
 
-        infoUtils.readLegacyDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.readLegacyDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName());
+        checkVoid(result);
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName());
+        checkVoid(result);
     }
 
     /**
@@ -132,20 +141,24 @@ public class UndeployTestCase {
     public void testUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deployment deploy-file --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());
 
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ENABLED);
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), ENABLED);
+        CommandResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
 
         // From serverGroup1 only, still referenced from sg2. Must keep-content
         ctx.handle("deployment undeploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
 
-        infoUtils.checkDeploymentByInfo(sgOne, cliTestApp1War.getName(), ADDED);
-        infoUtils.checkDeploymentByInfo(sgTwo, cliTestApp1War.getName(), ENABLED);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
 
         ctx.handle("deployment undeploy * --all-relevant-server-groups");
 
-        infoUtils.readDeploymentInfo(sgOne);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
-        infoUtils.readDeploymentInfo(sgTwo);
-        infoUtils.checkMissingInOutputMemory(cliTestApp1War.getName());
+        result = deploymentInfo(cli, sgOne);
+        checkMissing(result, cliTestApp1War.getName());
+        result = deploymentInfo(cli, sgTwo);
+        checkMissing(result, cliTestApp1War.getName());
     }
 }
