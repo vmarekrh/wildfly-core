@@ -28,8 +28,7 @@ import java.util.Iterator;
 import org.jboss.as.cli.CommandContext;
 
 import org.jboss.as.cli.CommandLineException;
-import org.jboss.as.test.deployment.DeploymentInfoUtils;
-import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentInfoResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
@@ -157,7 +156,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        CommandResult result = deploymentList(cli);
+        DeploymentInfoResult result = deploymentList(cli);
         checkExist(result, cliTestApp1War.getName());
         checkExist(result, cliTestAnotherWar.getName());
         checkExist(result, cliTestApp2War.getName());
@@ -299,7 +298,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        CommandResult result = deploymentList(cli);
+        DeploymentInfoResult result = deploymentList(cli);
         checkExist(result, cliTestApp1War.getName());
         checkExist(result, cliTestAnotherWar.getName());
         checkExist(result, cliTestApp2War.getName());
@@ -432,7 +431,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deployment disable-all --all-relevant-server-groups");
 
         // Step 4) Check if all applications deployments is disabled in all server groups
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -466,7 +465,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deployment disable-all --server-groups=" + sgOne);
 
         // Step 4) Check if all applications deployments is disabled in first server groups
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -522,7 +521,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
 
         // Step 5) Verify if selected application deployment are enabled, but other have still previous state
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -556,7 +555,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("undeploy * --keep-content --all-relevant-server-groups");
 
         // Step 4) Check if all applications deployments is disabled in all server groups
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -590,7 +589,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("undeploy * --keep-content --server-groups=" + sgOne);
 
         // Step 4) Check if all applications deployments is disabled in first server groups
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -646,7 +645,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         ctx.handle("deploy --name=" + cliTestAppEar.getName() + " --server-groups=" + sgTwo + ',' + sgOne);
 
         // Step 5) Verify if selected application deployment are enabled, but other have still previous state
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);

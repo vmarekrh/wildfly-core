@@ -37,8 +37,7 @@ import java.io.File;
 import java.util.Iterator;
 
 import org.jboss.as.cli.CommandContext;
-import org.jboss.as.test.deployment.DeploymentInfoUtils;
-import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentInfoResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
@@ -142,7 +141,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testUndeployAllWars() throws Exception {
         ctx.handle("deployment undeploy *.war --all-relevant-server-groups");
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -167,7 +166,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testUndeployCliTestApps() throws Exception {
         ctx.handle("deployment undeploy cli-test-app* --all-relevant-server-groups");
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -192,7 +191,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testUndeployTestAs() throws Exception {
         ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -217,7 +216,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testUndeployTestAWARs() throws Exception {
         ctx.handle("deployment undeploy *test-a*.war --all-relevant-server-groups");
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -242,7 +241,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployAllWars() throws Exception {
         ctx.handle("undeploy *.war --all-relevant-server-groups");
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -267,7 +266,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployCliTestApps() throws Exception {
         ctx.handle("undeploy cli-test-app* --all-relevant-server-groups");
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -292,7 +291,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployTestAps() throws Exception {
         ctx.handle("undeploy *test-ap* --all-relevant-server-groups");
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -317,7 +316,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployTestAs() throws Exception {
         ctx.handle("undeploy *test-a* --all-relevant-server-groups");
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -342,7 +341,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testUndeployTestAps() throws Exception {
         ctx.handle("deployment undeploy *test-a* --all-relevant-server-groups");
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -367,7 +366,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployTestAWARs() throws Exception {
         ctx.handle("undeploy *test-a*.war --all-relevant-server-groups");
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkMissing(result, cliTestApp1War.getName(), ctx);
         checkMissing(result, cliTestAnotherWar.getName(), ctx);
         checkMissing(result, cliTestApp2War.getName(), ctx);
@@ -403,7 +402,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
         }
 
         // Check if nothing change
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
@@ -439,7 +438,7 @@ public class UndeployWildcardDomainTestCase extends AbstractCliTestBase {
         }
 
         // Check if nothing change
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), ENABLED, ctx);
         checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);

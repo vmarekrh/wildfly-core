@@ -26,8 +26,7 @@ import java.util.Iterator;
 
 import org.jboss.as.cli.CommandContext;
 
-import org.jboss.as.test.deployment.DeploymentInfoUtils;
-import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentInfoResult;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
 import org.jboss.as.test.integration.domain.suites.CLITestSuite;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
@@ -109,7 +108,7 @@ public class UndeployTestCase extends AbstractCliTestBase {
     public void testLegacyUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deploy --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());
 
-        CommandResult result = legacyDeploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
         result = legacyDeploymentInfo(cli, sgTwo);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
@@ -141,7 +140,7 @@ public class UndeployTestCase extends AbstractCliTestBase {
     public void testUndeployWithAllServerGroups() throws Exception {
         ctx.handle("deployment deploy-file --server-groups=" + sgOne + ',' + sgTwo + " " + cliTestApp1War.getAbsolutePath());
 
-        CommandResult result = deploymentInfo(cli, sgOne);
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
         result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
@@ -151,7 +150,7 @@ public class UndeployTestCase extends AbstractCliTestBase {
 
         result = deploymentInfo(cli, sgOne);
         checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
-        result = deploymentInfo(cli, sgOne);
+        result = deploymentInfo(cli, sgTwo);
         checkExist(result, cliTestApp1War.getName(), ENABLED, ctx);
 
         ctx.handle("deployment undeploy * --all-relevant-server-groups");

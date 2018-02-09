@@ -37,7 +37,7 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.S
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.OK;
 
 import org.jboss.as.cli.impl.CommandContextConfiguration;
-import org.jboss.as.test.deployment.DeploymentInfoUtils.CommandResult;
+import org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentInfoResult;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.junit.After;
@@ -142,7 +142,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file " + cliTestApp2War.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        CommandResult result = deploymentList(cli);
+        DeploymentInfoResult result = deploymentList(cli);
         checkExist(result, cliTestApp1War.getName(), ctx);
         checkExist(result, cliTestAnotherWar.getName());
         checkExist(result, cliTestApp2War.getName());
@@ -259,7 +259,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        CommandResult result = legacyDeploymentInfo(cli);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli);
         checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
@@ -297,7 +297,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        CommandResult result = deploymentInfo(cli);
+        DeploymentInfoResult result = deploymentInfo(cli);
         checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
@@ -385,7 +385,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deploy --disabled " + cliTestApp2War.getAbsolutePath());
 
         // Step 2) Check if applications deployments is installed and disabled
-        CommandResult result = legacyDeploymentInfo(cli);
+        DeploymentInfoResult result = legacyDeploymentInfo(cli);
         checkExist(result, cliTestApp1War.getName(), STOPPED, ctx);
         checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
         checkExist(result, cliTestApp2War.getName(), STOPPED, ctx);
@@ -421,7 +421,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-url " + cliTestApp2War.toURI());
 
         // Check if application deployments is installed
-        CommandResult result = deploymentList(cli);
+        DeploymentInfoResult result = deploymentList(cli);
         checkExist(result, cliTestApp2War.getName(), ctx);
         result = deploymentInfo(cli);
         checkExist(result, cliTestApp2War.getName(), OK, ctx);
@@ -437,7 +437,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testDeployFileWithWrongPath() throws Exception {
         // Remember status of application deployment before deploy operation
-        final CommandResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(cli);
 
         // Try deploy application deployments with wrong path
         try {
@@ -451,7 +451,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final CommandResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(cli);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of application deployment something is deployed.",
                     after, is(before));
@@ -468,7 +468,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testDeployWithWrongUrl() throws Exception {
         // Remember status of application deployment before deploy operation
-        final CommandResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(cli);
 
         // Use local file url
         try {
@@ -483,7 +483,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final CommandResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(cli);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong url of application deployment something is deployed.",
                     after, is(before));
@@ -501,7 +501,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     public void testDeployWithWrongCli() throws Exception {
         final String wrongArgument = "--fddhgfhtsdgr";
         // Remember status of application deployment before deploy operation
-        final CommandResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(cli);
 
         // Try deploy cli archive with wrong path
         tempCliTestAppWar = createCliArchive("ls "+ wrongArgument +" sgsfgfd ghf d");
@@ -516,7 +516,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final CommandResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(cli);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of cli archive something is deployed.",
                     after, is(before));
@@ -534,7 +534,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final CommandResult after1 = deploymentInfo(cli);
+        final DeploymentInfoResult after1 = deploymentInfo(cli);
         if (!after1.isOutputEmpty()) {
             assertThat("After deploying wrong cli archive something is deployed.",
                     after1, is(before));
@@ -552,7 +552,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testDisableWrongDeployment() throws Exception {
         // Remember status of application deployment before deploy operation
-        final CommandResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(cli);
 
         // Try disable non installed application deployment
         try {
@@ -566,7 +566,7 @@ public class DeployTestCase extends AbstractCliTestBase{
             // Verification wrong command execution fail - success
         }
         // Verify if is application deployment status hasn't change
-        final CommandResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(cli);
         if (!after.isOutputEmpty()) {
             assertThat("After disabling of non-deployed application deployment something is change.",
                     after, is(before));
@@ -592,7 +592,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file --disabled " + cliTestAnotherWar.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        CommandResult result = deploymentList(cli);
+        DeploymentInfoResult result = deploymentList(cli);
         checkExist(result, cliTestAnotherWar.getName(), ctx);
 
         // Step 2b) Verify if application deployment is disabled by info command
@@ -621,7 +621,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testEnableWrongDeployments() throws Exception {
         // Remember status of application deployment before deploy operation
-        final CommandResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(cli);
 
         // Try enable non installed application deployment
         try {
@@ -636,7 +636,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final CommandResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(cli);
         if (!after.isOutputEmpty()) {
             assertThat("After enable of non-deployed application deployment something is change.",
                     after, is(before));
