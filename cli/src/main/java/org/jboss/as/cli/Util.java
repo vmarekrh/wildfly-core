@@ -480,38 +480,13 @@ public class Util {
             try {
                 ModelNode outcome = client.execute(request);
                 if (isSuccess(outcome)) {
-                    if(!listContains(outcome, deploymentName)) {
-                        continue;
+                    if(listContains(outcome, deploymentName)) {
+                        result.add(serverGroup);
                     }
                 } else {
                     continue;
                 }
             } catch (Exception e) {
-                continue;
-            }
-
-            builder = new DefaultOperationRequestBuilder();
-            builder.addNode(SERVER_GROUP, serverGroup);
-            builder.addNode(DEPLOYMENT, deploymentName);
-            builder.setOperationName(READ_ATTRIBUTE);
-            builder.addProperty(NAME, ENABLED);
-            try {
-                request = builder.buildRequest();
-            } catch (OperationFormatException e) {
-                throw new IllegalStateException("Failed to build operation", e);
-            }
-
-            try {
-                ModelNode outcome = client.execute(request);
-                if (isSuccess(outcome)) {
-                    if(!outcome.hasDefined("result")) {
-                        continue;
-                    }
-                    if(outcome.get("result").asBoolean()) {
-                        result.add(serverGroup);
-                    }
-                }
-            } catch(Exception e) {
                 continue;
             }
         }
