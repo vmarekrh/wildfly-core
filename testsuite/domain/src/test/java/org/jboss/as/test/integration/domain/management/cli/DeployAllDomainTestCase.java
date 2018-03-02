@@ -59,7 +59,7 @@ import org.junit.Test;
 /**
  * @author jdenise@redhat.com
  */
-public class DeployAllDomainTestCase extends AbstractCliTestBase {
+public class DeployAllDomainTestCase {
 
     protected static File cliTestApp1War;
     protected static File cliTestApp2War;
@@ -74,8 +74,7 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
 
     @BeforeClass
     public static void before() throws Exception {
-        testSupport = CLITestSuite.createSupport(UndeployWildcardDomainTestCase.class.getSimpleName());
-        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
+        testSupport = CLITestSuite.createSupport(DeployAllDomainTestCase.class.getSimpleName());
 
         // deployment1
         cliTestApp1War = createCliArchive("cli-test-app1-deploy-all.war", "Version0");

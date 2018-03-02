@@ -16,9 +16,7 @@ limitations under the License.
 
 package org.jboss.as.test.deployment;
 
-import org.jboss.as.cli.CommandContext;
 import org.jboss.as.cli.CommandFormatException;
-import org.jboss.as.test.integration.management.util.CLIWrapper;
 import org.jboss.dmr.ModelNode;
 import org.jboss.logging.Logger;
 import org.wildfly.common.annotation.NotNull;
@@ -50,7 +48,7 @@ import static org.junit.Assert.fail;
  * @author Vratislav Marek (vmarek@redhat.com)
  **/
 public class DeploymentInfoUtils {
-    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
+    static final String LINE_SEPARATOR = System.getProperty("line.separator");
     private static final String FAILED = "failed";
 
     private static final Logger log = Logger.getLogger(DeploymentInfoUtils.class);
@@ -124,12 +122,13 @@ public class DeploymentInfoUtils {
         /* Holding output of called command for multiple checking output without recall command
            Output is parsed for processing*/
         private final List<String> rows;
+        private final DeploymentInfoReader infoReader;
         // Represent request of management operations to verify check
         private String request;
         // Represent response of management operations to verify check
         private String response;
 
-        private DeploymentInfoResult(String command, String serverGroup, String output) {
+        private DeploymentInfoResult(String command, String serverGroup, String output, DeploymentInfoReader infoReader) {
             this.command = command;
             this.serverGroup = serverGroup;
             originalOutput = output;
@@ -140,6 +139,7 @@ public class DeploymentInfoUtils {
                 log.trace("Read output: <EMPTY>");
                 rows = new ArrayList<>();
             }
+            this.infoReader = infoReader;
         }
 
         /**
@@ -218,6 +218,10 @@ public class DeploymentInfoUtils {
             return originalOutput;
         }
 
+        public DeploymentInfoReader getInfoReader() {
+            return infoReader;
+        }
+
         // &&&& BEGIN Method for additional information about processing verify check
 
         /**
@@ -281,7 +285,6 @@ public class DeploymentInfoUtils {
         // Expected state of application deployment for check
         private DeploymentState expectedState;
         private SearchType searchType;
-        private CommandContext ctx;
         // Represent string holder for goal of checking to log/error messages
         private String goalStr;
 
@@ -293,7 +296,6 @@ public class DeploymentInfoUtils {
             name = null;
             expectedState = UNKNOWN;
             searchType = SearchType.EXIST;
-            ctx = null;
             goalStr = null;
         }
 
@@ -346,14 +348,18 @@ public class DeploymentInfoUtils {
             return this;
         }
 
-        private CommandContext getCtx() {
-            return ctx;
+//        private CommandContext getCtx() {
+//            return ctx;
+//        }
+
+        private DeploymentInfoReader getInfoReader() {
+            return result.getInfoReader();
         }
 
-        private CheckArguments setCtx(CommandContext ctx) {
-            this.ctx = ctx;
-            return this;
-        }
+//        private CheckArguments setCtx(CommandContext ctx) {
+//            this.ctx = ctx;
+//            return this;
+//        }
 
         private boolean isOutputEmpty() {
             return result.isOutputEmpty();
@@ -394,7 +400,7 @@ public class DeploymentInfoUtils {
                     "\n}\n, name='" + name + '\'' +
                     "\n, expectedState=" + expectedState +
                     "\n, searchType=" + searchType +
-                    "\n, ctx=" + ctx +
+                    "\n, infoReader=" + getInfoReader().toString() +
                     "\n, goalStr='" + goalStr + '\'' +
                     "\n}";
         }
@@ -407,59 +413,59 @@ public class DeploymentInfoUtils {
     /**
      * Invoke deployment list
      *
-     * @param cli CLIWrapper to cli connection and collect raw command output
+     * @param infoReader Cli connection to collect raw command output
      * @return Instance of DeploymentInfoResult with command output
      */
-    public static DeploymentInfoResult deploymentList(CLIWrapper cli) {
-        return callCommand(cli, "deployment list", null);
+    public static DeploymentInfoResult deploymentList(DeploymentInfoReader infoReader) {
+        return callCommand(infoReader, "deployment list", null);
     }
 
     /**
      * Invoke deployment info
      * For standalone mode.
      *
-     * @param cli CLIWrapper to cli connection and collect raw command output
+     * @param infoReader Cli connection to collect raw command output
      * @return Instance of DeploymentInfoResult with command output
      */
-    public static DeploymentInfoResult deploymentInfo(CLIWrapper cli) {
-        return deploymentInfo(cli, null);
+    public static DeploymentInfoResult deploymentInfo(DeploymentInfoReader infoReader) {
+        return deploymentInfo(infoReader, null);
     }
 
     /**
      * Invoke deployment info
      * For domain mode.
      *
-     * @param cli         CLIWrapper to cli connection and collect raw command output
+     * @param infoReader  Cli connection to collect raw command output
      * @param serverGroup Selected server group in list/info command
      * @return Instance of DeploymentInfoResult with command output
      */
-    public static DeploymentInfoResult deploymentInfo(CLIWrapper cli, String serverGroup) {
+    public static DeploymentInfoResult deploymentInfo(DeploymentInfoReader infoReader, String serverGroup) {
         String groupPart = serverGroup != null ? " --server-group=" + serverGroup : "";
-        return callCommand(cli, "deployment info" + groupPart, serverGroup);
+        return callCommand(infoReader, "deployment info" + groupPart, serverGroup);
     }
 
     /**
      * Invoke legacy deployment info
      * For standalone mode.
      *
-     * @param cli CLIWrapper to cli connection and collect raw command output
+     * @param infoReader Cli connection to collect raw command output
      * @return Instance of DeploymentInfoResult with command output
      */
-    public static DeploymentInfoResult legacyDeploymentInfo(CLIWrapper cli) {
-        return legacyDeploymentInfo(cli, null);
+    public static DeploymentInfoResult legacyDeploymentInfo(DeploymentInfoReader infoReader) {
+        return legacyDeploymentInfo(infoReader, null);
     }
 
     /**
      * Invoke legacy deployment info
      * For domain mode.
      *
-     * @param cli         CLIWrapper to cli connection and collect raw command output
+     * @param infoReader  Cli connection to collect raw command output
      * @param serverGroup Selected server group in list/info command
      * @return Instance of DeploymentInfoResult with command output
      */
-    public static DeploymentInfoResult legacyDeploymentInfo(CLIWrapper cli, String serverGroup) {
+    public static DeploymentInfoResult legacyDeploymentInfo(DeploymentInfoReader infoReader, String serverGroup) {
         String groupPart = serverGroup != null ? " --server-group=" + serverGroup : "";
-        return callCommand(cli, "deployment-info" + groupPart, serverGroup);
+        return callCommand(infoReader, "deployment-info" + groupPart, serverGroup);
     }
     // #### END   Public pre-loading methods
 
@@ -477,18 +483,6 @@ public class DeploymentInfoUtils {
         check(new CheckArguments(result).setName(name));
     }
 
-    /**
-     * Checking for existence of application deployment
-     *
-     * @param result Instance of DeploymentInfoResult with command output
-     * @param name   Represent name of application deployment for testing
-     * @param ctx    Represent CommandContext to cli connection and handle management commands
-     * @throws CommandFormatException Throw in case of assert failure
-     * @throws IOException            Throw in case of problem with execute management command
-     */
-    public static void checkExist(DeploymentInfoResult result, String name, CommandContext ctx) throws CommandFormatException, IOException {
-        check(new CheckArguments(result).setName(name).setCtx(ctx));
-    }
 
     /**
      * Checking for state and existence of application deployment
@@ -504,42 +498,15 @@ public class DeploymentInfoUtils {
     }
 
     /**
-     * Checking for state and existence of application deployment
+     * Checking for non existence of application deployment.
      *
-     * @param result   Instance of DeploymentInfoResult with command output
-     * @param name     Represent name of application deployment for testing
-     * @param expected Expected state of application deployment
-     * @param ctx      Represent CommandContext to cli connection and handle management commands
-     * @throws CommandFormatException Throw in case of assert failure
-     * @throws IOException            Throw in case of problem with execute management command
-     */
-    public static void checkExist(DeploymentInfoResult result, String name, DeploymentState expected, CommandContext ctx) throws CommandFormatException, IOException {
-        check(new CheckArguments(result).setName(name).setExpectedState(expected).setCtx(ctx));
-    }
-
-    /**
-     * Checking for non existence of application deployment
-     *
-     * @param result Instance of DeploymentInfoResult with command output
-     * @param name   Represent name of application deployment for testing
+     * @param result     Instance of DeploymentInfoResult with command output
+     * @param name       Represent name of application deployment for testing.
      * @throws CommandFormatException Throw in case of assert failure
      * @throws IOException            Throw in case of problem with execute management command
      */
     public static void checkMissing(DeploymentInfoResult result, String name) throws CommandFormatException, IOException {
         check(new CheckArguments(result).setName(name).setSearchType(CheckArguments.SearchType.MISSING));
-    }
-
-    /**
-     * Checking for non existence of application deployment.
-     *
-     * @param result Instance of DeploymentInfoResult with command output
-     * @param name   Represent name of application deployment for testing.
-     * @param ctx    Represent CommandContext to cli connection and handle management commands
-     * @throws CommandFormatException Throw in case of assert failure
-     * @throws IOException            Throw in case of problem with execute management command
-     */
-    public static void checkMissing(DeploymentInfoResult result, String name, CommandContext ctx) throws CommandFormatException, IOException {
-        check(new CheckArguments(result).setName(name).setSearchType(CheckArguments.SearchType.MISSING).setCtx(ctx));
     }
 
     /**
@@ -588,19 +555,22 @@ public class DeploymentInfoUtils {
     /**
      * Calling command in Cli, processing output
      *
-     * @param cli         Open connection into cli
+     * @param infoReader  Open connection into cli
      * @param command     Command for call
      * @param serverGroup Server group name in domain mode
      * @return Instance of DeploymentInfoResult with command output
      */
-    private static DeploymentInfoResult callCommand(CLIWrapper cli, String command, String serverGroup) {
-        if (cli == null) {
+    private static DeploymentInfoResult callCommand(DeploymentInfoReader infoReader, String command, String serverGroup) {
+        if (!infoReader.isReady()) {
             throw new IllegalStateException("Cli is not connected! Call connectCli method first!");
         }
 
-        cli.sendLine(command);
+        infoReader.sendLine(command);
         log.trace("Called command: '" + command + "'");
-        return new DeploymentInfoResult(command, serverGroup, cli.readOutput());
+        if (infoReader.hasError()) {
+            fail(infoReader.readErrorOutput());
+        }
+        return new DeploymentInfoResult(command, serverGroup, infoReader.readOutput(), infoReader);
     }
 
     /**
@@ -658,17 +628,13 @@ public class DeploymentInfoUtils {
      * @throws IOException            Throw in case of problem with execute management command
      */
     private static void doubleCheck(CheckArguments param) throws CommandFormatException, IOException {
-        if (param.getCtx() == null) {
-            log.warn("Skip double checking by management trusted commands - CommandContext connection not set!");
-            return;
-        }
         if (param.isSearchTypeStatus() && UNKNOWN.equals(param.getExpectedState())) {
             throw new IllegalStateException("Could not verify deployment state " + UNKNOWN + "!");
         }
 
         log.trace("Double checking " + param.getName() + " with management command trusted for " + param.getGoalStr());
 
-        if (param.getCtx().isTerminated()) {
+        if (!param.getInfoReader().isReady()) {
             throw new IllegalStateException("FAILED: Could not double checking " + param.getName() +
                     " with management operations for " + param.getGoalStr() + "!" + "Because connection to cli is closed!");
         }
@@ -696,10 +662,10 @@ public class DeploymentInfoUtils {
      * @throws IOException            Throw in case of problem with execute management command
      */
     private static void doubleCheckStatus(CheckArguments param) throws CommandFormatException, IOException {
+        final DeploymentInfoReader infoReader = param.getInfoReader();
         String serverGroupStr = param.getResult().hasServerGroup() ? "/server-group=" + param.getResult().getServerGroup() : "";
         param.getResult().setRequest(serverGroupStr + "/deployment=" + param.getName() + ":read-attribute(name=enabled)");
-        ModelNode mn = param.getCtx().buildRequest(param.getResult().getRequest());
-        ModelNode response = param.getCtx().getModelControllerClient().execute(mn);
+        ModelNode response = infoReader.buildRequestAndExecute(param.getResult().getRequest());
         param.getResult().setResponse(response.asString());
 
         // State NOT_ADDED is not supported by management command
@@ -738,9 +704,9 @@ public class DeploymentInfoUtils {
      * @throws IOException            Throw in case of problem with execute management command
      */
     private static void doubleCheckExist(CheckArguments param) throws CommandFormatException, IOException {
+        final DeploymentInfoReader infoReader = param.getInfoReader();
         param.getResult().setRequest("/deployment=" + param.getName() + ":read-attribute(name=name)");
-        ModelNode mn = param.getCtx().buildRequest(param.getResult().getRequest());
-        ModelNode response = param.getCtx().getModelControllerClient().execute(mn);
+        ModelNode response = infoReader.buildRequestAndExecute(param.getResult().getRequest());
         param.getResult().setResponse(response.asString());
 
         assertThat("Invalid response for " + param.getName(), response.hasDefined(OUTCOME), is(true));
@@ -760,9 +726,9 @@ public class DeploymentInfoUtils {
      * @throws IOException            Throw in case of problem with execute management command
      */
     private static void doubleCheckMissing(CheckArguments param) throws CommandFormatException, IOException {
+        final DeploymentInfoReader infoReader = param.getInfoReader();
         param.getResult().setRequest("/deployment=" + param.getName() + ":read-attribute(name=name)");
-        ModelNode mn = param.getCtx().buildRequest(param.getResult().getRequest());
-        ModelNode response = param.getCtx().getModelControllerClient().execute(mn);
+        ModelNode response = infoReader.buildRequestAndExecute(param.getResult().getRequest());
         param.getResult().setResponse(response.asString());
 
         assertThat("Invalid response for " + param.getName(), response.hasDefined(OUTCOME), is(true));

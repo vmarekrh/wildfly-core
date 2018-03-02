@@ -21,7 +21,9 @@
  */
 package org.jboss.as.test.integration.management.cli;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +39,7 @@ import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.S
 import static org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentState.OK;
 
 import org.jboss.as.cli.impl.CommandContextConfiguration;
+import org.jboss.as.test.deployment.DeploymentInfoReader;
 import org.jboss.as.test.deployment.DeploymentInfoUtils.DeploymentInfoResult;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
@@ -61,7 +64,7 @@ import org.wildfly.core.testrunner.WildflyTestRunner;
  * @author jdenise@redhat.com
  */
 @RunWith(WildflyTestRunner.class)
-public class DeployTestCase extends AbstractCliTestBase{
+public class DeployTestCase {
 
     private static final String WRONG_PATH_PART = "216561-d.war";
     private static final String WRONG_DEPLOYMENT = "testRo.war";
@@ -72,16 +75,13 @@ public class DeployTestCase extends AbstractCliTestBase{
     private static File tempCliTestAppWar;
 
     private static CommandContext ctx;
+    private static DeploymentInfoReader infoResult;
+
 
     @BeforeClass
     public static void before() throws Exception {
-        CommandContextConfiguration.Builder configBuilder = new CommandContextConfiguration.Builder();
-        configBuilder.setInitConsole(true).setConsoleInput(System.in).setConsoleOutput(System.out).
-                setController("remote+http://" + TestSuiteEnvironment.getServerAddress()
-                        + ":" + TestSuiteEnvironment.getServerPort());
-        ctx = CommandContextFactory.getInstance().newCommandContext(configBuilder.build());
-        ctx.connectController();
-        AbstractCliTestBase.initCLI(TestSuiteEnvironment.getServerAddress());
+        infoResult = new DeploymentInfoReader();
+        ctx = infoResult.getCtx();
 
         // deployment1
         cliTestApp1War = createWarArchive("cli-test-app1-deploy.war", "Version0");
@@ -141,13 +141,13 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file " + cliTestApp2War.getAbsolutePath());
 
         // Step 2a) Verify if deployment are successful by list command
-        DeploymentInfoResult result = deploymentList(cli);
-        checkExist(result, cliTestApp1War.getName(), ctx);
+        DeploymentInfoResult result = deploymentList(infoResult);
+        checkExist(result, cliTestApp1War.getName());
         checkExist(result, cliTestAnotherWar.getName());
         checkExist(result, cliTestApp2War.getName());
 
         // Step 2b) Verify if applications deployments are enabled by info command
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), OK);
         checkExist(result, cliTestAnotherWar.getName(), OK);
         checkExist(result, cliTestApp2War.getName(), OK);
@@ -156,7 +156,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment disable " + cliTestApp1War.getName());
 
         // Step 4) Verify if selected application deployment is disabled, but other have still previous state
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), STOPPED);
         checkExist(result, cliTestAnotherWar.getName(), OK);
         checkExist(result, cliTestApp2War.getName(), OK);
@@ -165,7 +165,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment disable-all");
 
         // Step 6) Check if all applications deployments is disabled
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), STOPPED);
         checkExist(result, cliTestAnotherWar.getName(), STOPPED);
         checkExist(result, cliTestApp2War.getName(), STOPPED);
@@ -174,7 +174,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment enable " + cliTestApp2War.getName());
 
         // Step 8) Verify if selected application deployment are enabled, but other have still previous state
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), STOPPED);
         checkExist(result, cliTestAnotherWar.getName(), STOPPED);
         checkExist(result, cliTestApp2War.getName(), OK);
@@ -183,7 +183,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment enable-all");
 
         // Step 10) Verify if all applications deployments are enabled
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), OK);
         checkExist(result, cliTestAnotherWar.getName(), OK);
         checkExist(result, cliTestApp2War.getName(), OK);
@@ -192,7 +192,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment undeploy " + cliTestApp2War.getName());
 
         // Step 12) Check if selected application deployment is removed, but others still exist with right state
-        result = deploymentInfo(cli);
+        result = deploymentInfo(infoResult);
         checkExist(result, cliTestApp1War.getName(), OK);
         checkExist(result, cliTestAnotherWar.getName(), OK);
         checkMissing(result, cliTestApp2War.getName());
@@ -201,10 +201,10 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment undeploy *");
 
         // Step 14) Check if all applications deployments is gone
-        result = deploymentList(cli);
-        checkMissing(result, cliTestApp1War.getName(), ctx);
-        checkMissing(result, cliTestAnotherWar.getName(), ctx);
-        checkMissing(result, cliTestApp2War.getName(), ctx);
+        result = deploymentList(infoResult);
+        checkMissing(result, cliTestApp1War.getName());
+        checkMissing(result, cliTestAnotherWar.getName());
+        checkMissing(result, cliTestApp2War.getName());
         checkEmpty(result);
     }
 
@@ -258,8 +258,8 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        DeploymentInfoResult result = legacyDeploymentInfo(cli);
-        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
+        DeploymentInfoResult result = legacyDeploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
         tempCliTestAppWar.delete();
@@ -269,8 +269,8 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deploy --force " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 6) Verify if application deployment is deployed and enabled by info command
-        result = legacyDeploymentInfo(cli);
-        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
+        result = legacyDeploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
         // TODO read page.html and check content
     }
 
@@ -296,8 +296,8 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 3) Verify if application deployment is deployed and enabled by info command
-        DeploymentInfoResult result = deploymentInfo(cli);
-        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
+        DeploymentInfoResult result = deploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
 
         // Step 4) Delete previous application deployment archive and create new for redeploy
         tempCliTestAppWar.delete();
@@ -307,8 +307,8 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-file --replace " + tempCliTestAppWar.getAbsolutePath());
 
         // Step 6) Verify if application deployment is deployed and enabled by info command
-        result = deploymentInfo(cli);
-        checkExist(result, tempCliTestAppWar.getName(), OK, ctx);
+        result = deploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
         // TODO read page.html and check content
     }
 
@@ -384,28 +384,28 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deploy --disabled " + cliTestApp2War.getAbsolutePath());
 
         // Step 2) Check if applications deployments is installed and disabled
-        DeploymentInfoResult result = legacyDeploymentInfo(cli);
-        checkExist(result, cliTestApp1War.getName(), STOPPED, ctx);
-        checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
-        checkExist(result, cliTestApp2War.getName(), STOPPED, ctx);
+        DeploymentInfoResult result = legacyDeploymentInfo(infoResult);
+        checkExist(result, cliTestApp1War.getName(), STOPPED);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+        checkExist(result, cliTestApp2War.getName(), STOPPED);
 
         // Step 3) Enable all applications deployments
         ctx.handle("deploy --name=*");
 
         // Step 4) Check if applications deployments is enabled
-        result = legacyDeploymentInfo(cli);
-        checkExist(result, cliTestApp1War.getName(), OK, ctx);
-        checkExist(result, cliTestAnotherWar.getName(), OK, ctx);
-        checkExist(result, cliTestApp2War.getName(), OK, ctx);
+        result = legacyDeploymentInfo(infoResult);
+        checkExist(result, cliTestApp1War.getName(), OK);
+        checkExist(result, cliTestAnotherWar.getName(), OK);
+        checkExist(result, cliTestApp2War.getName(), OK);
 
         // Step 5) Disable all applications deployments
         ctx.handle("undeploy * --keep-content");
 
         // Step 6) Check if applications deployments is disabled
-        result = legacyDeploymentInfo(cli);
-        checkExist(result, cliTestApp1War.getName(), STOPPED, ctx);
-        checkExist(result, cliTestAnotherWar.getName(), STOPPED, ctx);
-        checkExist(result, cliTestApp2War.getName(), STOPPED, ctx);
+        result = legacyDeploymentInfo(infoResult);
+        checkExist(result, cliTestApp1War.getName(), STOPPED);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+        checkExist(result, cliTestApp2War.getName(), STOPPED);
     }
 
     /**
@@ -420,10 +420,10 @@ public class DeployTestCase extends AbstractCliTestBase{
         ctx.handle("deployment deploy-url " + cliTestApp2War.toURI());
 
         // Check if application deployments is installed
-        DeploymentInfoResult result = deploymentList(cli);
-        checkExist(result, cliTestApp2War.getName(), ctx);
-        result = deploymentInfo(cli);
-        checkExist(result, cliTestApp2War.getName(), OK, ctx);
+        DeploymentInfoResult result = deploymentList(infoResult);
+        checkExist(result, cliTestApp2War.getName());
+        result = deploymentInfo(infoResult);
+        checkExist(result, cliTestApp2War.getName(), OK);
     }
 
     /**
@@ -436,7 +436,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testDeployFileWithWrongPath() throws Exception {
         // Remember status of application deployment before deploy operation
-        final DeploymentInfoResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
 
         // Try deploy application deployments with wrong path
         try {
@@ -450,7 +450,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final DeploymentInfoResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of application deployment something is deployed.",
                     after, is(before));
@@ -467,7 +467,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testDeployWithWrongUrl() throws Exception {
         // Remember status of application deployment before deploy operation
-        final DeploymentInfoResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
 
         // Use local file url
         try {
@@ -482,7 +482,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final DeploymentInfoResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong url of application deployment something is deployed.",
                     after, is(before));
@@ -500,10 +500,10 @@ public class DeployTestCase extends AbstractCliTestBase{
     public void testDeployWithWrongCli() throws Exception {
         final String wrongArgument = "--fddhgfhtsdgr";
         // Remember status of application deployment before deploy operation
-        final DeploymentInfoResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
 
         // Try deploy cli archive with wrong path
-        tempCliTestAppWar = createCliArchive("ls "+ wrongArgument +" sgsfgfd ghf d");
+        tempCliTestAppWar = createCliArchive("ls " + wrongArgument + " sgsfgfd ghf d");
         try {
             ctx.handle("deployment deploy-cli-archive " + tempCliTestAppWar.getPath() + WRONG_PATH_PART);
             fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
@@ -515,7 +515,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final DeploymentInfoResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
         if (!after.isOutputEmpty()) {
             assertThat("After deploying wrong path of cli archive something is deployed.",
                     after, is(before));
@@ -533,7 +533,7 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final DeploymentInfoResult after1 = deploymentInfo(cli);
+        final DeploymentInfoResult after1 = deploymentInfo(infoResult);
         if (!after1.isOutputEmpty()) {
             assertThat("After deploying wrong cli archive something is deployed.",
                     after1, is(before));
@@ -550,7 +550,7 @@ public class DeployTestCase extends AbstractCliTestBase{
     @Test
     public void testEnableWrongDeployments() throws Exception {
         // Remember status of application deployment before deploy operation
-        final DeploymentInfoResult before = deploymentInfo(cli);
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
 
         // Try enable non installed application deployment
         try {
@@ -565,10 +565,241 @@ public class DeployTestCase extends AbstractCliTestBase{
         }
 
         // Verify if is application deployment status hasn't change
-        final DeploymentInfoResult after = deploymentInfo(cli);
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
         if (!after.isOutputEmpty()) {
             assertThat("After enable of non-deployed application deployment something is change.",
                     after, is(before));
         }
+    }
+
+    /**
+     * Testing disabling of non-deployed application deployments.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testDisableWrongDeployment() throws Exception {
+        // Deploying application deployment for verify failed disable command doesn't have effect to other deployments
+        ctx.handle("deployment deploy-file " + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deployment deploy-file " + cliTestApp2War.getAbsolutePath());
+
+        // Remember status of application deployment before deploy operation // TODO Add some background deployment
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
+
+        // Try disable non installed application deployment
+        try {
+            ctx.handle("deployment disable " + WRONG_DEPLOYMENT);
+            fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
+        } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Deployment '" + WRONG_DEPLOYMENT +
+                            "' is not found among the registered deployments."));
+            // Verification wrong command execution fail - success
+        }
+        // Verify if is application deployment status hasn't change
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
+        if (!after.isOutputEmpty()) {
+            assertThat("After disabling of non-deployed application deployment something is change.",
+                    after, is(before));
+        }
+    }
+
+    /**
+     * Testing disabling of non-deployed application deployments.
+     * Using backward compatibility commands.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testLegacyDisableWrongDeployment() throws Exception {
+        // Deploying application deployment for verify failed disable command doesn't have effect to other deployments
+        ctx.handle("deploy " + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deploy " + cliTestApp2War.getAbsolutePath());
+
+        // Remember status of application deployment before deploy operation
+        final DeploymentInfoResult before = deploymentInfo(infoResult);
+
+        // Try disable non installed application deployment
+        try {
+            ctx.handle( "undeploy " + WRONG_DEPLOYMENT + " --keep-content");
+            fail("Deploying application deployment with wrong url link doesn't failed! Command execution fail is expected.");
+        } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Deployment '" + WRONG_DEPLOYMENT +
+                            "' is not found among the registered deployments."));
+            // Verification wrong command execution fail - success
+        }
+        // Verify if is application deployment status hasn't change
+        final DeploymentInfoResult after = deploymentInfo(infoResult);
+        if (!after.isOutputEmpty()) {
+            assertThat("After disabling of non-deployed application deployment something is change.",
+                    after, is(before));
+        }
+    }
+
+    /**
+     * Testing undeploy already undeployed application deployments.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testUndeployUndeployedDeployment() throws Exception {
+        // Step 1) Prepare application deployment archive
+        tempCliTestAppWar = createWarArchive("cli-test-app-undeploy.war", "VersionDeploy3.01");
+
+        // Step 2) Deploy application deployment
+        ctx.handle("deployment deploy-file " + tempCliTestAppWar.getAbsolutePath());
+
+        // Step 3) Check ...
+        DeploymentInfoResult result =  deploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
+
+        // Step 4) Undeploy
+        ctx.handle("deployment undeploy " + tempCliTestAppWar.getName());
+
+        // Step 5) Check ...
+        result =  deploymentInfo(infoResult);
+        checkMissing(result, tempCliTestAppWar.getName());
+
+        // Step 6) Try undeploy already undeployed application deployment
+        try {
+            ctx.handle("deployment undeploy " + tempCliTestAppWar.getName());
+            fail("Undeploying already undeployed application deployment doesn't failed! Command execution fail is expected.");
+        } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Deployment '" + tempCliTestAppWar.getName() +
+                            "' is not found among the registered deployments."));
+            // Verification wrong command execution fail - success
+        }
+    }
+
+    /**
+     * Testing undeploy already undeployed application deployments.
+     * Using backward compatibility commands.
+     * Verify if status of application deployments hasn't change.
+     * Verify error message.
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testLegacyUndeployUndeployedDeployment() throws Exception {
+        // Step 1) Prepare application deployment archive
+        tempCliTestAppWar = createWarArchive("cli-test-app-undeploy.war", "VersionDeploy3.01");
+
+        // Step 2) Deploy application deployment
+        ctx.handle("deploy " + tempCliTestAppWar.getAbsolutePath());
+
+        // Step 3) Check ...
+        DeploymentInfoResult result =  deploymentInfo(infoResult);
+        checkExist(result, tempCliTestAppWar.getName(), OK);
+
+        // Step 4) Undeploy
+        ctx.handle("undeploy " + tempCliTestAppWar.getName());
+
+        // Step 5) Check ...
+        result =  deploymentInfo(infoResult);
+        checkMissing(result, tempCliTestAppWar.getName());
+
+        // Step 6) Try undeploy already undeployed application deployment
+        try {
+            ctx.handle("undeploy " + tempCliTestAppWar.getName());
+            fail("Undeploying already undeployed application deployment doesn't failed! Command execution fail is expected.");
+        } catch (Exception ex) {
+            // Check error message
+            assertThat("Error message doesn't contains expected message information!"
+                    , ex.getMessage(), containsString("Deployment '" + tempCliTestAppWar.getName() +
+                            "' is not found among the registered deployments."));
+            // Verification wrong command execution fail - success
+        }
+    }
+
+    /**
+     * Testing of disabling already disabled application deployment.
+     * Verify error message.
+     * <ul>
+     * <li>Step 1) Deploy disabled application deployment</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if application deployment is disabled by info command</li>
+     * <li>Step 3) Try disable already disabled application deployment</li>
+     * </ul>
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testDisableAlreadyDisabledDeployment() throws Exception {
+        // Step 1) Deploy disabled application deployment
+        ctx.handle("deployment deploy-file --disabled " + cliTestAnotherWar.getAbsolutePath());
+
+        // Step 2a) Verify if deployment are successful by list command
+        DeploymentInfoResult result = deploymentList(infoResult);
+        checkExist(result, cliTestAnotherWar.getName());
+
+        // Step 2b) Verify if application deployment is disabled by info command
+        result = deploymentInfo(infoResult);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+
+        // Step 3) Try disable already disabled application deployment
+        ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errorOutput));
+
+        ctx.handle("deployment disable " + cliTestAnotherWar.getName());
+
+        //Check error message
+        assertThat("Error message doesn't contains expected message information!"
+                , errorOutput.toString(), containsString("Deployment '" + cliTestAnotherWar.getName() + "' is already disabled."));
+        // Verification wrong command execution fail - success
+    }
+
+    /**
+     * Testing of disabling already disabled application deployment.
+     * Using backward compatibility commands.
+     * Verify error message.
+     * <ul>
+     * <li>Step 1) Deploy disabled application deployment</li>
+     * <li>Step 2a) Verify if deployment are successful by list command</li>
+     * <li>Step 2b) Verify if application deployment is disabled by info command</li>
+     * <li>Step 3) Try disable already disabled application deployment</li>
+     * </ul>
+     *
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-3566">WFCORE-3566</a>
+     * @throws Exception
+     */
+    @Test
+    public void testLegacyDisableAlreadyDisabledDeployment() throws Exception {
+        // Step 1) Deploy disabled application deployment
+        ctx.handle("deploy --disabled " + cliTestAnotherWar.getAbsolutePath());
+
+        // Step 2a) Verify if deployment are successful by list command
+        DeploymentInfoResult result = deploymentList(infoResult);
+        checkExist(result, cliTestAnotherWar.getName());
+
+        // Step 2b) Verify if application deployment is disabled by info command
+        result = deploymentInfo(infoResult);
+        checkExist(result, cliTestAnotherWar.getName(), STOPPED);
+
+        // Step 3) Try disable already disabled application deployment
+        ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errorOutput));
+
+        ctx.handle("undeploy " + cliTestAnotherWar.getName() + " --keep-content");
+
+        //Check error message
+        assertThat("Error message doesn't contains expected message information!"
+                , errorOutput.toString(), containsString("Deployment '" + cliTestAnotherWar.getName() + "' is already disabled."));
+        // Verification wrong command execution fail - success
     }
 }
