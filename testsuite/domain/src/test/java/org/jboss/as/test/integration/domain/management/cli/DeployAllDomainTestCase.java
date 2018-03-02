@@ -447,4 +447,219 @@ public class DeployAllDomainTestCase extends AbstractCliTestBase {
         checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
         checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
     }
+
+    /**
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for disabling all deployments with all group by Aesh commands.
+     */
+    @Test
+    public void testDisableAllAppDeploymentAllGroup() throws CommandLineException, IOException {
+        // Step 1) Deploy applications deployments to defined server groups
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+
+        // Step 2) Disabling two selected applications deployments
+        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
+        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
+
+        // Step 3) Disable all deployed applications deployments in all server groups
+        ctx.handle("deployment disable-all --all-relevant-server-groups"); // TODO passed
+
+        // Step 4) Check if all applications deployments is disabled in all server groups
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+    }
+
+    /**
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for disabling all deployments with separates group by Aesh commands.
+     */
+    @Test
+    public void testDisableAllAppDeployment() throws CommandLineException, IOException {
+        // Step 1) Deploy applications deployments to defined server groups
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+        // Step 2) Disabling two selected applications deployments
+        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
+        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
+
+        // Step 3) Disable all deployed applications deployments in first server groups
+        ctx.handle("deployment disable-all --server-groups=" + sgOne); /* TODO
+        org.jboss.as.cli.CommandLineException: java.util.concurrent.ExecutionException: org.jboss.as.cli.CommandLineException: {"WFLYCTL0062: Composite operation failed and was rolled back. Steps that failed:" => {"Operation step-3" => "WFLYCTL0216: Management resource '[
+            (\"server-group\" => \"main-server-group\"),
+            (\"deployment\" => \"cli-test-app2-deploy-all.war\")
+        ]' not found"}}
+*/
+
+        // Step 4) Check if all applications deployments is disabled in first server groups
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+        // Step 5) Disable all deployed applications deployments in seconds server group
+        ctx.handle("deployment disable-all --server-groups=" + sgTwo);
+
+        // Step 6) Check if all applications deployments is disabled in all server groups
+        result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+    }
+
+    /**
+     * Separate test for check status of issue WFCORE-3562 by Aesh command.
+     * Concentration is for enabling one application deployments with separates group by Aesh commands.
+     */
+    @Test
+    public void testEnableSingleAppDeployment() throws CommandLineException, IOException {
+        // Step 1) Deploy applications deployments to defined server groups
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deployment deploy-file --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+        // Step 2) Disabling two selected applications deployments
+        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
+        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
+
+        // Step 3) Disable all deployed applications deployments in all server groups
+        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestApp1War.getName());
+        ctx.handle("deployment disable --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getName());
+        ctx.handle("deployment disable --server-groups=" + sgTwo + ' ' + cliTestApp2War.getName());
+        ctx.handle("deployment disable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName());
+
+        // Step 4) Enable one application deployment
+        ctx.handle("deployment enable --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getName()); // TODO passed
+
+        // Step 5) Verify if selected application deployment are enabled, but other have still previous state
+        DeploymentInfoResult result = deploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+
+        result = deploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+    }
+
+
+    /**
+     * Separate test for check status of issue WFCORE-3562 by Legacy command.
+     * Concentration is for disable wildcard selecting all applications deployments with all server group by Legacy command.
+     */
+    @Test
+    public void testLegacyDisableAllAppDeploymentAllGroup() throws CommandLineException, IOException {
+        // Step 1) Deploy applications deployments to defined server groups
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+        // Step 2) Disabling two selected applications deployments
+        ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
+        ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
+
+        // Step 3) Disable all deployed applications deployments in all server groups
+        ctx.handle("undeploy * --keep-content --all-relevant-server-groups"); // TODO passed
+
+        // Step 4) Check if all applications deployments is disabled in all server groups
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+    }
+
+    /**
+     * Separate test for check status of issue WFCORE-3562 by Legacy command.
+     * Concentration is for disabling all deployments with separates group by Legacy commands.
+     */
+    @Test
+    public void testLegacyDisableAllAppDeployment() throws CommandLineException, IOException {
+        // Step 1) Deploy applications deployments to defined server groups
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestApp1War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgOne + ' ' + cliTestAnotherWar.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ' ' + cliTestApp2War.getAbsolutePath());
+        ctx.handle("deploy --server-groups=" + sgTwo + ',' + sgOne + ' ' + cliTestAppEar.getAbsolutePath());
+
+        // Step 2) Disabling two selected applications deployments
+        ctx.handle("undeploy " + cliTestApp1War.getName() + " --keep-content --server-groups=" + sgOne);
+        ctx.handle("undeploy " + cliTestApp2War.getName() + " --keep-content --server-groups=" + sgTwo);
+
+        // Step 3) Disable all deployed applications deployments in first server groups
+        ctx.handle("undeploy * --keep-content --server-groups=" + sgOne); /* TODO
+        org.jboss.as.cli.CommandLineException: java.util.concurrent.ExecutionException: org.jboss.as.cli.CommandLineException: {"WFLYCTL0062: Composite operation failed and was rolled back. Steps that failed:" => {"Operation step-3" => "WFLYCTL0216: Management resource '[
+            (\"server-group\" => \"main-server-group\"),
+            (\"deployment\" => \"cli-test-app2-deploy-all.war\")
+        ]' not found"}}
+*/
+
+        // Step 4) Check if all applications deployments is disabled in first server groups
+        DeploymentInfoResult result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ENABLED, ctx);
+
+        // Step 5) Disable all deployed applications deployments in second server groups
+        ctx.handle("undeploy * --keep-content --server-groups=" + sgTwo);
+
+        // Step 6) Check if all applications deployments is disabled in all server groups
+        result = legacyDeploymentInfo(cli, sgOne);
+        checkExist(result, cliTestApp1War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+
+        result = legacyDeploymentInfo(cli, sgTwo);
+        checkExist(result, cliTestApp1War.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestAnotherWar.getName(), NOT_ADDED, ctx);
+        checkExist(result, cliTestApp2War.getName(), ADDED, ctx);
+        checkExist(result, cliTestAppEar.getName(), ADDED, ctx);
+    }
+
 }
