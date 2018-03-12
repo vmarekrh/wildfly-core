@@ -118,10 +118,14 @@ public abstract class AbstractUndeployCommand extends CommandWithPermissions
         try {
             ModelNode request = buildRequest(ctx,
                     name, allServerGroups, serverGroups, keepContent, headers);
-            final ModelNode result = ctx.
-                    getModelControllerClient().execute(request);
-            if (!Util.isSuccess(result)) {
-                throw new CommandException(Util.getFailureDescription(result));
+
+            //if the request defined no steps, there is no enabled deployment present to be disabled or undeployed
+            if (request.hasDefined(Util.STEPS)) {
+                final ModelNode result = ctx.
+                        getModelControllerClient().execute(request);
+                if (!Util.isSuccess(result)) {
+                    throw new CommandException(Util.getFailureDescription(result));
+                }
             }
         } catch (IOException e) {
             throw new CommandException("Failed to deploy", e);
