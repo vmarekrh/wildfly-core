@@ -118,6 +118,7 @@ public abstract class AbstractUndeployCommand extends CommandWithPermissions
         try {
             ModelNode request = buildRequest(ctx,
                     name, allServerGroups, serverGroups, keepContent, headers);
+
             final ModelNode result = ctx.
                     getModelControllerClient().execute(request);
             if (!Util.isSuccess(result)) {
@@ -203,7 +204,7 @@ public abstract class AbstractUndeployCommand extends CommandWithPermissions
                         }
                     }
                 }
-            } else if (Util.isDeployedAndEnabledInStandalone(deploymentName, client)) {
+            } else {
                 builder = new DefaultOperationRequestBuilder();
                 builder.setOperationName(Util.UNDEPLOY);
                 builder.addNode(Util.DEPLOYMENT, deploymentName);
