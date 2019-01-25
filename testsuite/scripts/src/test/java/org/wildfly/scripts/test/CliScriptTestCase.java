@@ -22,12 +22,16 @@ package org.wildfly.scripts.test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.jboss.as.controller.client.helpers.ClientConstants;
 import org.jboss.as.controller.client.helpers.Operations;
 import org.jboss.dmr.ModelNode;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 /**
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
@@ -56,4 +60,43 @@ public class CliScriptTestCase extends ScriptTestCase {
             Assert.assertEquals(ClientConstants.CONTROLLER_PROCESS_STATE_RUNNING, Operations.readResult(result).asString());
         }
     }
+
+    /**
+     * Testing jboss-cli script to not throw divide by zero exception while are running as a cron service without tty.
+     *
+     * @throws Exception
+     * @see <a href="https://issues.jboss.org/browse/WFCORE-4278">WFCORE-4278</a>
+     */
+    @Test
+    public void testDivideByZeroWithoutTty() throws Exception {
+//        try {
+//            Assume.assumeTrue(!Environment.isWindows() && isShellSupported("bash", "-c", "echo", "test"));
+//        } catch (Exception ex) {
+//            //
+//        }
+        final Path fullExe = Environment.JBOSS_HOME.resolve("bin").resolve("jboss-cli.sh").toAbsolutePath();
+//        final ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", "echo AAAA");
+        Process process = null;
+        try (ScriptProcess cli = new ScriptProcess(fullExe, null)) {
+            cli.start("connect");
+            if (!cli.waitFor(Environment.getTimeout(), TimeUnit.SECONDS)) {
+                Assert.fail("Timeout...");
+            }
+            System.out.println(cli.getErrorMessage("Tst"));
+        }
+//        try {
+////            process = builder.start();
+////            if (!process.waitFor(Environment.getTimeout(), TimeUnit.SECONDS)) {
+////                Assert.assertTrue("Timeout...", false);
+////            }
+////            Assert.assertTrue(process.exitValue() == 0);
+//        } catch (IOException e) {
+//            Assert.assertTrue("Exception: " + e.getMessage(), false);
+//        } finally {
+//            if (process != null) {
+//                process.destroyForcibly();
+//            }
+//        }
+    }
+
 }
