@@ -35,6 +35,7 @@ import org.jboss.as.controller.client.helpers.Operations;
 import org.jboss.dmr.ModelNode;
 import org.junit.Assert;
 import org.junit.Test;
+import org.wildfly.core.embedded.Configuration;
 import org.wildfly.core.embedded.EmbeddedManagedProcess;
 import org.wildfly.core.embedded.EmbeddedProcessFactory;
 import org.wildfly.core.embedded.HostController;
@@ -111,6 +112,10 @@ public class EmbeddedTestCase extends AbstractTestCase {
         Assert.assertTrue("Could not create temp directory " + secondJbossHome.toString(), Files.exists(secondJbossHome));
         copyFileOrFolder(jbossHome.toFile(), secondJbossHome.toFile(), StandardCopyOption.REPLACE_EXISTING);
 
+
+        // TODO how to start only cli client and start embedded server by command with JBOSS_HOME argument in one cli process run
+        Configuration.Builder builder = Configuration.Builder.of(Environment.JBOSS_HOME);
+        builder.addCommandArgument("");
 
         final StandaloneServer server = EmbeddedProcessFactory.createStandaloneServer(Environment.createConfigBuilder().build());
 
