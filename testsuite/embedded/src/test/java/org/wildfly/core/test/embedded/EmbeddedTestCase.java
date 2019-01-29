@@ -19,6 +19,7 @@
 
 package org.wildfly.core.test.embedded;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +33,7 @@ import java.util.function.Function;
 
 import org.jboss.as.controller.client.ModelControllerClient;
 import org.jboss.as.controller.client.helpers.Operations;
+import org.jboss.as.test.integration.management.cli.CliProcessWrapper;
 import org.jboss.dmr.ModelNode;
 import org.junit.Assert;
 import org.junit.Test;
@@ -113,26 +115,27 @@ public class EmbeddedTestCase extends AbstractTestCase {
         copyFileOrFolder(jbossHome.toFile(), secondJbossHome.toFile(), StandardCopyOption.REPLACE_EXISTING);
 
 
-        // TODO how to start only cli client and start embedded server by command with JBOSS_HOME argument in one cli process run
-        Configuration.Builder builder = Configuration.Builder.of(Environment.JBOSS_HOME);
-        builder.addCommandArgument("");
-
-        final StandaloneServer server = EmbeddedProcessFactory.createStandaloneServer(Environment.createConfigBuilder().build());
-
-        try {
-            server.start();
-            waitFor(server, null);
-        } finally {
-            server.stop();
-        }
-
-        try {
-            server.start();
-            waitFor(server, null);
-        } finally {
-            server.stop();
-        }
-
+//        // TODO how to start only cli client and start embedded server by command with JBOSS_HOME argument in one cli process run
+//        Configuration.Builder builder = Configuration.Builder.of(Environment.JBOSS_HOME);
+//        builder.addCommandArgument("");
+//
+//        final StandaloneServer server = EmbeddedProcessFactory.createStandaloneServer(Environment.createConfigBuilder().build());
+//
+//        try {
+//            server.start();
+//            waitFor(server, null);
+//        } finally {
+//            server.stop();
+//        }
+//
+//        try {
+//            server.start();
+//            waitFor(server, null);
+//        } finally {
+//            server.stop();
+//        }
+        CliProcessWrapper cli = new CliProcessWrapper();
+        cli.executeInteractive();
     }
 
     public static void copyFileOrFolder(File source, File dest, CopyOption... options) throws IOException {
