@@ -130,6 +130,7 @@ public class SubsystemTransformerTestCase extends AbstractSubsystemBaseTest {
                         FailedOperationTransformationConfig.REJECTED_RESOURCE
                 )
                 .addFailedAttribute(SUBSYSTEM_ADDRESS.append(PathElement.pathElement(AGGREGATE_REALM, "AggregateOne")), REJECTED_RESOURCE)
+                .addFailedAttribute(SUBSYSTEM_ADDRESS.append(PathElement.pathElement(AGGREGATE_REALM, "AggregateTwo")), REJECTED_RESOURCE)
                 );
     }
 
