@@ -90,9 +90,19 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-netty</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
@@ -287,7 +297,7 @@
                 </plugins>
             </build>
         </profile>
-        
+
         <!-- Test against bootable jar -->
         <profile>
             <id>bootablejar.profile</id>
@@ -300,7 +310,7 @@
                 <plugins>
                     <plugin>
                         <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>   
+                        <artifactId>galleon-maven-plugin</artifactId>
                         <executions>
                             <!-- Disable the default provisioning -->
                             <execution>
